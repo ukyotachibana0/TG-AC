@@ -1,0 +1,48 @@
+/**
+ * create time : 2020-10-09
+ * Random class
+ */
+#pragma once
+
+#include <random>
+#include <chrono>
+#include <cstdlib>
+#include "types.hpp"
+
+namespace gl {
+namespace fastsgg {
+
+class Random
+{
+private:
+    std::default_random_engine generator;
+    std::uniform_real_distribution<double> distribution;
+
+public:
+    Random() {
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+        generator = std::default_random_engine(seed);
+    }
+
+    ~Random() {}
+
+    double nextReal() {
+        return distribution(generator);
+    }
+
+    int nextInt32(int bound) { // [0, bound]
+        // std::default_random_engine gen;
+        // std::uniform_int_distribution<int> uni_int(0, bound);
+        // return uni_int(gen);
+        return (rand() % (bound + 1));
+    }
+
+    int_t nextInt(int_t bound) { // [0, bound]
+        std::uniform_int_distribution<int_t> uni_int(0, bound);
+        return uni_int(generator);
+    }
+
+}; //! class Random
+
+} //! namespace fastsgg
+} //! namespace gl
