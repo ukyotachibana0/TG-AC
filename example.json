@@ -1,0 +1,26 @@
+{
+  "graph": "community1",
+  "node": [
+    {
+      "label": "user",
+      "amount": 10000
+    }
+  ],
+  "edge": [
+    {
+      "label": "follow",
+      "source": "user",
+      "target": "user",
+      "amount": 80000,
+      "in": {"type": "power_law", "lambda": 1.15, "min_d": 1, "max_d": 50},
+      "out": {"type": "power_law", "lambda": 1.15, "min_d": 1, "max_d": 60},
+      "community": {
+        "amount": 100,
+        "rho": 0.6,
+        "lambda": 1.05,
+        "overlap": 0.3
+      }
+    }
+  ],
+  "store_format": "ADJ"
+}
