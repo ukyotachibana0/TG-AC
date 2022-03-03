@@ -40,25 +40,25 @@ public:
 int main(int argc, char const *argv[])
 {
     srand(time(NULL));
-     TimeCounter tc;
-     tc.start();
-     const char* filename = argv[1];
-     string str_filename(filename);
-     Generation gen(str_filename);
-     gen.run();
-     tc.stop();
-     cout << "[Main] Elapsed time : " << tc.milliseconds() << " ms." << endl;
+    TimeCounter tc;
+    tc.start();
+    const char* filename = argv[1];
+    string str_filename(filename);
+    Generation gen(str_filename);
+    gen.run();
+    tc.stop();
+    cout << "[Main] Elapsed time : " << tc.milliseconds() << " ms." << endl;
 
-     /*const char* ch_attr_json = argv[1];
-     const char* ch_comm_fn = argv[2];
-     const char* ch_output_fn = argv[3];
-     const char* ch_edge_fn = argv[4];
-     string str_attr_json(ch_attr_json);
-     string str_comm_fn(ch_comm_fn);
-     string str_output_fn(ch_output_fn);
-     string str_edge_fn(ch_edge_fn);
-     bool res = gen_main(str_attr_json, str_comm_fn, str_output_fn, str_edge_fn);
-     cout << "Done: " << res << endl;*/
+    /*const char* ch_attr_json = argv[1];
+    const char* ch_comm_fn = argv[2];
+    const char* ch_output_fn = argv[3];
+    const char* ch_edge_fn = argv[4];
+    string str_attr_json(ch_attr_json);
+    string str_comm_fn(ch_comm_fn);
+    string str_output_fn(ch_output_fn);
+    string str_edge_fn(ch_edge_fn);
+    bool res = gen_main(str_attr_json, str_comm_fn, str_output_fn, str_edge_fn);
+    cout << "Done: " << res << endl;*/
 
     return 0;
 }
@@ -72,7 +72,7 @@ int main(int argc, char const *argv[])
 // 2. 类目型进一步分为：many-value, multiple-value 类型
 // 3. 分别为：
 // 4. many-value: 每个属性有多个值，但，只能选择一个值
-// 5. multiple-valu: 每个属性有多个值，可以选择多个值作为属性值
+// 5. multiple-value: 每个属性有多个值，可以选择多个值
 // 6. 分为多个 key-value 形式
 // 7. 对于 many-value: 
 // 8. key -> 对应多候选值，数字化，从 `1` 开始

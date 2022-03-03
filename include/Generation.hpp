@@ -45,20 +45,26 @@ class Generation
 private:
     std::string json_filename;
     JSON::json json_obj;
+
     Random rand;
+    
     bool b_streaming_style;
+    bool b_temporal;
+    bool b_temporal_anchor;
+
     double g_gr;
     std::string g_format;
     EnumStoreFormat g_enum_format;
-    std::vector<St_EdgeGeneration> edge_gen_plan;   // Generation Plan
+    std::vector<St_EdgeGeneration> edge_gen_plan;           // Generation Plan
     std::vector<St_NodeAttrGeneration> node_attr_gen_plan;  // Generation Plan
+    
     int n_threads;
     const int thread_chunk_size = 16;
 
     double gp_progress;     // Generation Progress
     std::string gp_tag;     // Generation Tag (Node/Edge-{name/source_name-target_name})
     bool gb_gen_done;       // is Global Generation Progress Done
-    bool gb_start_gen;      // has start generating
+    bool gb_start_gen;      // has started generating
 
     std::unordered_map<std::string, int_t> actual_edge_nums;
 

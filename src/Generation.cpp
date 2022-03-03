@@ -431,6 +431,14 @@ void Generation::generate_plan() {
         b_streaming_style = true;
         g_gr = json_obj[schema::json_gr];
     }
+    // temporal?
+    b_temporal = true;
+    // TODO
+
+    // temporal and anchor?
+    b_temporal_anchor = true;
+    // TODO
+
     // storage format
     g_format = schema::json_format_TSV;
     if (json_obj.find(schema::json_store_format) != json_obj.end()) {
@@ -462,8 +470,8 @@ void Generation::generate_plan() {
         std::string sub_dir = graph_name + "/" + e_label;
         mkdir(sub_dir);
 
-        std::string dump_filename = sub_dir + "/" + e_source + "_" + e_target + "." + g_format;
         std::string basename = sub_dir + "/" + e_source + "_" + e_target;
+        std::string dump_filename = basename + "." + g_format;
         int_t e_amount = one_edge[schema::json_edge_amount];
         // # Information
         st_one_edge.e_label = e_label;
