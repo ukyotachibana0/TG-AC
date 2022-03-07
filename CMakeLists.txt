@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.18)
-project(FastSGG_CPP VERSION 0.1 LANGUAGES CXX)
+project(TG-AC VERSION 0.1 LANGUAGES CXX)
 
 # C++ Standard 11
 # CMake 3.x version
