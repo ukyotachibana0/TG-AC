@@ -56,6 +56,8 @@ const static std::string json_edge_label = "label";
 const static std::string json_edge_source = "source";
 const static std::string json_edge_target = "target";
 const static std::string json_edge_amount = "amount";
+const static std::string json_edge_min_timestamp = "min_ts";
+const static std::string json_edge_max_timestamp = "max_ts";
 // distribution
 const static std::string json_in_dist = "in";
 const static std::string json_out_dist = "out";
