@@ -53,7 +53,6 @@ private:
     Random rand;
     
     bool b_streaming_style;
-    // bool b_temporal_anchor;
 
     double g_gr;
     std::string g_format;

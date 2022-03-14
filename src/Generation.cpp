@@ -186,27 +186,21 @@ bool Generation::check_json() {
             ans = false;
             continue;
         }
-        // temporal: min_ts
-        if (one_edge.find(schema::json_edge_min_timestamp) == one_edge.end()) {
-            std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_edge_min_timestamp << "']." << std::endl;
-            ans = false;
-            continue;
+        // temporal(optional): min_ts
+        if (one_edge.find(schema::json_edge_min_timestamp) != one_edge.end()) {
+            if (!one_edge[schema::json_edge_min_timestamp].is_number()) {
+                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_edge_min_timestamp << "'] (number)." << std::endl;
+                ans = false;
+                continue;
+            }
         }
-        if (!one_edge[schema::json_edge_min_timestamp].is_number()) {
-            std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_edge_min_timestamp << "'] (number)." << std::endl;
-            ans = false;
-            continue;
-        }
-        // temporal: max_ts
-        if (one_edge.find(schema::json_edge_max_timestamp) == one_edge.end()) {
-            std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_edge_max_timestamp << "']." << std::endl;
-            ans = false;
-            continue;
-        }
-        if (!one_edge[schema::json_edge_max_timestamp].is_number()) {
-            std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_edge_max_timestamp << "'] (number)." << std::endl;
-            ans = false;
-            continue;
+        // temporal(optional): max_ts
+        if (one_edge.find(schema::json_edge_max_timestamp) != one_edge.end()) {
+            if (!one_edge[schema::json_edge_max_timestamp].is_number()) {
+                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_edge_max_timestamp << "'] (number)." << std::endl;
+                ans = false;
+                continue;
+            }
         }
         // out distribution
         if (one_edge.find(schema::json_out_dist) == one_edge.end()) {
@@ -411,11 +405,23 @@ bool Generation::check_json() {
             // overlap (optional)
             if (comm_obj.find(schema::json_comm_overlap) != comm_obj.end()) {
                 if (!comm_obj[schema::json_comm_overlap].is_number()) {
-                    std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_comm << "'] (overlap number)." << std::endl;
+                    std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_comm << "'] (overlap number)." << std::endl;
                     ans = false;
                 }
             }
-            
+            // anchor (optional; required for temporal)
+            if (comm_obj.find(schema::json_comm_window_size) != comm_obj.end()) {
+                if (!comm_obj[schema::json_comm_window_size].is_number()) {
+                    std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_comm << "'] (window size number)." << std::endl;
+                    ans = false;
+                }
+            }
+            if (comm_obj.find(schema::json_comm_window_step) != comm_obj.end()) {
+                if (!comm_obj[schema::json_comm_window_step].is_number()) {
+                    std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_comm << "'] (window step number)." << std::endl;
+                    ans = false;
+                }
+            }
         }
     }
     // "gr"(optional): double
@@ -547,7 +553,14 @@ void Generation::generate_plan() {
             // split community
             st_one_edge.commSplit = Utility::splitCommunity(s_nodes, t_nodes,
                 comm_params[schema::json_comm_amount], comm_params[schema::json_comm_lambda]);
-            st_one_edge.b_social = true;
+            if (!st_one_edge.b_temporal) st_one_edge.b_social = true;
+            // temporal
+            else if (one_edge.find(schema::json_comm_window_size) != one_edge.end() 
+                && one_edge.find(schema::json_comm_window_step) != one_edge.end()) {
+                comm_params[schema::json_comm_window_size] = one_comm[schema::json_comm_window_size];
+                comm_params[schema::json_comm_window_step] = one_comm[schema::json_comm_window_step];
+                st_one_edge.b_social = true;
+            }
             // overlapping
             if (one_comm.find(schema::json_comm_overlap) != one_comm.end()) {
                 st_one_edge.b_overlap = true;
@@ -1537,7 +1550,217 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
 }
 
 void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
+    // according to st_edge
+    std::unordered_map<std::string, double>& out_params = st_edge.out_params;
+    std::unordered_map<std::string, double>& in_params = st_edge.in_params;
+    std::string& ind_type = st_edge.ind_type;
+    std::string& outd_type = st_edge.outd_type;
+    int_t s_nodes = st_edge.s_nodes;
+    int_t t_nodes = st_edge.t_nodes;
+    int_t n_edges = st_edge.n_edges;
+    std::string& filename = st_edge.filename;
+
+    gp_tag = st_edge.e_label;
+    std::cout << "[Generation::simpleGraph]: " << st_edge.e_source << " -> " << st_edge.e_target << std::endl;
+    bool is_homo = (st_edge.e_source == st_edge.e_target);
+
+    int_t id_min = in_params[schema::json_dist_min_degree];
+    int_t id_max = in_params[schema::json_dist_max_degree];
+    int_t od_min = out_params[schema::json_dist_min_degree];
+    int_t od_max = out_params[schema::json_dist_max_degree];
+
+    Distribution *out_dist = getDist(od_min, od_max, s_nodes, n_edges, out_params, true, outd_type);
+
+#ifdef DEBUG
+    std::cout << "[Generation::simpleGraph] Out distribution" << std::endl;
+#endif
+
+    Distribution *in_dist = getDist(id_min, id_max, t_nodes, n_edges, in_params, false, ind_type);
+
+#ifdef DEBUG
+    std::cout << "[Generation::simpleGraph] In distribution" << std::endl;
+#endif
     
+    std::unordered_map<std::string, int_t>& temporal_params = st_edge.temporal_params;
+    int_t mit = temporal_params[schema::json_edge_min_timestamp];
+    int_t mat = temporal_params[schema::json_edge_max_timestamp];
+    std::cout << "mit, mat: " << mit << ", " << mat << std::endl;
+    Timestamp timer(mit, mat);
+
+    // show process
+    double cur = 0.0;
+    double progress = 0.0;
+    ProgressBar progress_bar;
+    int_t actual_edges = 0;
+
+#ifdef PARALLEL
+    std::vector<Store*> store_list;
+    for (int i = 0; i < n_threads; ++i) {
+        std::string fn_thread = filename + "_" + std::to_string(i);
+        store_list.push_back(new Store(fn_thread, g_enum_format));
+    }
+#else
+    Store *store = new Store(filename, g_enum_format);
+#endif
+
+#ifdef PATCH_VPP
+    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
+    bool b_patch = false;
+    Store *patch_store = nullptr;
+    std::vector<Store*> patch_store_list;
+    std::vector<std::string> url_list;
+
+    if (st_edge.e_source == "Page" && st_edge.e_target == "VPerson") {
+        b_patch = true;
+        std::string pp_filename = filename + "_co_occurrence";
+
+#ifdef PARALLEL
+        for (int i = 0; i < n_threads; ++i) {
+            std::string fn_thread = pp_filename + "_" + std::to_string(i);
+            patch_store_list.push_back(new Store(fn_thread, g_enum_format));
+        }
+#else
+        patch_store = new Store(pp_filename, g_enum_format);
+#endif
+
+        std::ifstream fin("urls.txt");
+        if (!fin.is_open()) {
+            std::cout << "Cannot open urls.txt" << std::endl;
+        }
+        std::string a_url;
+        while (std::getline(fin, a_url)) {
+            url_list.push_back(a_url);
+        }
+    }
+#endif
+    // END PATCH
+
+    // parallel FOR EACH NODE
+#ifdef PARALLEL
+    #pragma omp parallel for schedule (dynamic, thread_chunk_size)
+#endif
+    for (int_t i = 0; i < s_nodes; ++i) {
+        Store *store_ptr = nullptr;
+#ifdef PATCH_VPP
+        Store *patch_store_ptr = nullptr;
+#endif
+
+#ifdef PARALLEL
+        int tid = omp_get_thread_num();
+        store_ptr = store_list[tid];
+#ifdef PATCH_VPP
+        patch_store_ptr = patch_store_list[tid];
+#endif
+#else
+        store_ptr = store;
+#ifdef PATCH_VPP
+        patch_store_ptr = patch_store;
+#endif
+#endif
+
+        // unique to each thread
+        std::vector<int_t> nbrs;
+        int_t out_degree = out_dist->genOutDegree(i);
+        std::vector<std::vector<int_t>> tss(out_degree); // `out_degree` groups of timestamps
+        int_t sum = 0;
+        for (int_t j = 0; j < out_degree; ++j) {
+            // one neighbor of node i
+            int_t nbr = in_dist->genTargetID();
+            while (is_homo && nbr == i) {
+                nbr = in_dist->genTargetID();
+            }
+            int_t ts_num = timer.genTimestampNum();
+            for (int_t k = 0; k < ts_num; ++k) {
+                // one timestamp of edge (i, n)
+                int_t ts = timer.genTimestamp();
+                tss[j].push_back(ts);
+            }
+            sum += ts_num;
+
+            // PATCH, Co-occurrence (Person - Page - Person => Person - Person)
+#ifdef PATCH_VPP
+            if (b_patch) {
+                std::string temp = url_list[i] + "\tvp_" + std::to_string(t) + "_VPerson\tvp_";
+                for (auto one : nbrs) {
+                    std::string attach = temp + std::to_string(one) + "_VPerson\tCo_occurRelation";
+                    patch_store_ptr->writeTSVLine(nbr, one, attach);
+                }
+            }
+#endif
+            // END PATCH
+
+            nbrs.push_back(nbr);
+        }
+
+#ifdef PARALLEL
+        #pragma omp atomic
+#endif
+        actual_edges += sum;
+
+        // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
+#ifdef PATCH_VPP
+        if (b_patch) {
+            for (auto one : nbrs) {
+                std::string attach = "vp_" + std::to_string(one) + "_VPerson\tp_" + std::to_string(i) + "_Page\tOccurRelation";
+                store_ptr->writeTSVLine(one, i, attach);
+            }
+        } else {
+            store_ptr->writeLine(i, nbrs, tss);
+        }
+#else
+        store_ptr->writeLine(i, nbrs, tss);
+#endif
+        // END PATCH
+
+        nbrs.clear();
+        tss.clear();
+        cur = (double)actual_edges / (double)n_edges;
+        if (cur - progress >= 0.01) {
+#ifdef PARALLEL
+            #pragma omp atomic
+#endif
+            progress += 0.01;
+            gp_progress = progress;
+            // showProgress();
+            progress_bar.set_progress(progress);
+        }
+    }
+
+    // Store close
+#ifdef PARALLEL
+    for (int i = 0; i < n_threads; ++i) {
+        store_list[i]->close();
+    }
+
+    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
+#ifdef PATCH_VPP
+    if (b_patch) {
+        for (int i = 0; i < n_threads; ++i) {
+            patch_store_list[i]->close();
+        }
+    }
+#endif
+    // END PATCH
+
+#else
+    store->close();
+
+    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
+#ifdef PATCH_VPP
+    if (b_patch) {
+        patch_store->close();
+    }
+#endif
+    // END PATCH
+
+#endif
+
+    gp_progress = 1.0;
+    std::cout << "[Generation::temporalSimpleGraph] #Source Nodes = " << s_nodes << ", #Target Nodes = " << t_nodes << std::endl;
+    std::cout << "[Generation::temporalSimpleGraph] #Actual Edges = " << actual_edges << std::endl;
+    std::cout << "[Generation::temporalSimpleGraph] #Expect Edges = " << n_edges << std::endl;
+
+    actual_edge_nums[st_edge.e_label] = actual_edges;
 }
 
 Distribution* Generation::getDist(int_t mid, int_t mxd, int_t n, int_t m,

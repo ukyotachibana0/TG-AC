@@ -77,6 +77,8 @@ const static std::string json_comm_amount = "amount";
 const static std::string json_comm_rho = "rho";
 const static std::string json_comm_lambda = "lambda";
 const static std::string json_comm_overlap = "overlap";
+const static std::string json_comm_window_size = "win_size";
+const static std::string json_comm_window_step = "win_step";
 // streaming
 const static std::string json_gr = "gr";
 // storage format
