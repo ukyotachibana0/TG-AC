@@ -162,6 +162,27 @@ public:
         }
     }
 
+    void writeLine(int_t i, std::vector<int_t>& adj, std::vector<std::vector<int_t>>& ts) {
+        if (adj.empty() || ts.empty()) return;
+
+        int_t n = adj.size();
+        // TODO: consider different formats
+        for (int_t j = 0; j < n; j++) { // TSV
+            bw->write(i);
+            bw->tab();
+            bw->write(adj[j]);
+            for (auto t : ts[j]) {
+                bw->tab();
+                bw->write(t);
+            }
+            bw->newline();
+            current_file_lines ++;
+            if (current_file_lines == file_lines_upper) {
+                nextFile();
+            }
+        }
+    }
+
     void flush() {
         if (bw) {
             bw->flush();

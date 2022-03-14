@@ -7,6 +7,7 @@
 #include "types.hpp"
 #include "Distribution.hpp"
 #include "OutDegreeDistribution.hpp"
+#include "Timestamp.hpp"
 
 namespace gl {
 namespace fastsgg {
@@ -26,6 +27,9 @@ typedef struct _generate_edge {
     int_t n_edges;
     std::string filename;
     std::string basename;
+    // temporal
+    bool b_temporal;
+    std::unordered_map<std::string, int_t> temporal_params;
     // community
     bool b_social;
     std::unordered_map<std::string, double> comm_params;
@@ -49,8 +53,7 @@ private:
     Random rand;
     
     bool b_streaming_style;
-    bool b_temporal;
-    bool b_temporal_anchor;
+    // bool b_temporal_anchor;
 
     double g_gr;
     std::string g_format;
@@ -98,6 +101,10 @@ public:
     void streamingSimpleGraph(St_EdgeGeneration& st_edge);
 
     void streamingSocialGraph(St_EdgeGeneration& st_edge);
+
+    void temporalSimpleGraph(St_EdgeGeneration& st_edge);
+
+    void temporalSocialGraph(St_EdgeGeneration& st_edge);   // anchor communities
 
     Distribution* getDist(int_t mid, int_t mxd, int_t n, int_t m,
         std::unordered_map<std::string, double>& params,
