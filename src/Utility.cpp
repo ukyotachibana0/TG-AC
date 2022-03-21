@@ -247,7 +247,7 @@ std::vector<std::vector<int_t>> compleWindow(const std::vector<std::vector<int_t
 }
 
 
-std::vector<std::unordered_map<int_t, double>> idenAnchorComm(int_t n) {
+std::vector<std::unordered_map<int_t, double>> idenOlAnchorComm(int_t n) {
     std::vector<std::unordered_map<int_t, double>> ans(n);
     int_t n_pair = n / 2, i = 0;    // every community gets a overlapping anchor community on average
     Random rand;

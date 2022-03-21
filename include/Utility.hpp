@@ -34,7 +34,7 @@ public:
 
     static std::vector<std::vector<int_t>> compleWindow(const std::vector<std::vector<int_t>>& window, int_t e_mit, int_t e_mat);
 
-    static std::vector<std::unordered_map<int_t, double>> idenAnchorComm(int_t n);
+    static std::vector<std::unordered_map<int_t, double>> idenOlAnchorComm(int_t n);
 
     static int numOneBitInt(uint32_t x);
 
