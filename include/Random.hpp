@@ -30,6 +30,11 @@ public:
         return distribution(generator);
     }
 
+    double nextReal(double bound) { // [0, bound]
+        std::uniform_real_distribution<double> uni_db(0, bound);
+        return uni_db(generator);
+    }
+
     int nextInt32(int bound) { // [0, bound]
         // std::default_random_engine gen;
         // std::uniform_int_distribution<int> uni_int(0, bound);
