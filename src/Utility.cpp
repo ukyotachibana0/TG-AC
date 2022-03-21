@@ -204,6 +204,65 @@ std::vector<std::vector<int_t>> Utility::splitCommunity(
     return ans;
 }
 
+std::vector<std::vector<int_t>> splitWindow(int_t n, int_t sz, int_t min_ts, int_t max_ts) {
+    std::vector<std::vector<int_t>> ans(n, std::vector<int_t>({min_ts, max_ts}));
+    if (n == 1) return ans;
+
+    int_t total_ol = (max_ts - min_ts) - n * sz;
+    if (total_ol == 0) return ans;
+
+    int_t ol = total_ol / (n - 1), ts = min_ts;
+    for (int_t i = 0; i < n - 1; ++i) {
+        ans[i][0] = ts;
+        ans[i][1] = ts + sz;
+        ts += sz - ol;
+    }
+    ans[n - 1][0] = max_ts - sz;
+    return ans;
+}
+
+std::vector<std::vector<int_t>> unionWindow(const std::vector<std::vector<int_t>>& window) {
+    std::vector<std::vector<int_t>> ans;
+    int_t n = window.size(), i = 0;
+    while (i < n - 1) {
+        int_t left = window[i][0], right = window[i][1], j = i;
+        while (j < n - 1 && window[j + 1][0] <= window[j][1]) { 
+            right = window[++j][1];
+        }
+        ans.push_back({left, right});
+        i = j + 1;
+    }
+    if (i == n - 1) ans.push_back(window.back());
+    return ans;
+}
+
+std::vector<std::vector<int_t>> compleWindow(const std::vector<std::vector<int_t>>& window, 
+    int_t e_mit, int_t e_mat) {
+    std::vector<std::vector<int_t>> ans;
+    if (e_mit < window.front()[0]) ans.push_back({e_mit, window.front()[0]});
+    int n = window.size();
+    for (int i = 0; i < n - 1; ++i) { ans.push_back({window[i][1], window[i + 1][0]}); }
+    if (e_mat > window.back()[1]) ans.push_back({window.back()[1], e_mat});
+    return ans;
+}
+
+
+std::vector<std::unordered_map<int_t, double>> idenAnchorComm(int_t n) {
+    std::vector<std::unordered_map<int_t, double>> ans(n);
+    int_t n_pair = n / 2, i = 0;    // every community gets a overlapping anchor community on average
+    Random rand;
+    while (i < n_pair) {
+        std::pair<int_t, int_t> one_pair(rand.nextInt(n - 1), rand.nextInt(n - 1));
+        if (one_pair.first == one_pair.second) continue;
+        double ol = rand.nextReal(0.5);
+        if (ans[one_pair.first].insert({one_pair.second, ol}).second &&
+            ans[one_pair.second].insert({one_pair.first, ol}).second) 
+            ++i;
+    }
+    return ans;
+}
+
+
 int Utility::numOneBitInt(uint32_t x) {
     int ans = 0;
     while (x) {

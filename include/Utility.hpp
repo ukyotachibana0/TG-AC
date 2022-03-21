@@ -4,6 +4,7 @@
  */
 #pragma once
 #include <vector>
+#include <set>
 #include <string>
 #include "types.hpp"
 
@@ -26,6 +27,14 @@ public:
     static std::vector<int_t> splitScalar(int_t n, int_t k, double lambda);
 
     static std::vector<std::vector<int_t>> splitCommunity(int_t row, int_t col, int_t k, double lambda);
+
+    static std::vector<std::vector<int_t>> splitWindow(int_t n, int_t sz, int_t min_ts, int_t max_ts);
+
+    static std::vector<std::vector<int_t>> unionWindow(const std::vector<std::vector<int_t>>& window);
+
+    static std::vector<std::vector<int_t>> compleWindow(const std::vector<std::vector<int_t>>& window, int_t e_mit, int_t e_mat);
+
+    static std::vector<std::unordered_map<int_t, double>> idenAnchorComm(int_t n);
 
     static int numOneBitInt(uint32_t x);
 
