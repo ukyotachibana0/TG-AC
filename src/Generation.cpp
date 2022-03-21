@@ -416,12 +416,12 @@ bool Generation::check_json() {
                     ans = false;
                 }
             }
-            if (comm_obj.find(schema::json_comm_window_step) != comm_obj.end()) {
-                if (!comm_obj[schema::json_comm_window_step].is_number()) {
-                    std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_comm << "'] (window step number)." << std::endl;
-                    ans = false;
-                }
-            }
+            // if (comm_obj.find(schema::json_comm_window_step) != comm_obj.end()) {
+            //     if (!comm_obj[schema::json_comm_window_step].is_number()) {
+            //         std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_comm << "'] (window step number)." << std::endl;
+            //         ans = false;
+            //     }
+            // }
         }
     }
     // "gr"(optional): double
@@ -511,6 +511,8 @@ void Generation::generate_plan() {
             std::unordered_map<std::string, int_t>& temporal_params = st_one_edge.temporal_params;
             temporal_params[schema::json_edge_min_timestamp] = one_edge[schema::json_edge_min_timestamp];
             temporal_params[schema::json_edge_max_timestamp] = one_edge[schema::json_edge_max_timestamp];
+            st_one_edge.timer = Timestamp(temporal_params[schema::json_edge_min_timestamp],
+                temporal_params[schema::json_edge_max_timestamp]);
         }
 
         // Out-Degree Distribution
@@ -542,7 +544,6 @@ void Generation::generate_plan() {
             in_params[schema::json_dist_Nor_sigma] = in_dist[schema::json_dist_Nor_sigma];
 
         // Community Distribution (optional)
-        // TODO: anchor communities
         st_one_edge.b_social = false;
         if (one_edge.find(schema::json_comm) != one_edge.end()) {
             auto& one_comm = one_edge[schema::json_comm];
@@ -550,17 +551,23 @@ void Generation::generate_plan() {
             comm_params[schema::json_comm_amount] = one_comm[schema::json_comm_amount];
             comm_params[schema::json_comm_lambda] = one_comm[schema::json_comm_lambda];
             comm_params[schema::json_comm_rho] = one_comm[schema::json_comm_rho];
+            if (!st_one_edge.b_temporal) st_one_edge.b_social = true;
+            // anchor communities
+            else if (one_edge.find(schema::json_comm_window_size) != one_edge.end()) {
+                comm_params[schema::json_comm_window_size] = one_comm[schema::json_comm_window_size];
+                // comm_params[schema::json_comm_window_step] = one_comm[schema::json_comm_window_step];
+                st_one_edge.b_social = true;
+                // split time window
+                std::unordered_map<std::string, int_t>& temporal_params = st_one_edge.temporal_params;
+                st_one_edge.windSplit = Utility::splitWindow(comm_params[schema::json_comm_amount], 
+                    comm_params[schema::json_comm_window_size],
+                    temporal_params[schema::json_edge_min_timestamp],
+                    temporal_params[schema::json_edge_max_timestamp]);
+                st_one_edge.olAnchorComm = Utility::idenOlAnchorComm(comm_params[schema::json_comm_amount]);
+            }
             // split community
             st_one_edge.commSplit = Utility::splitCommunity(s_nodes, t_nodes,
                 comm_params[schema::json_comm_amount], comm_params[schema::json_comm_lambda]);
-            if (!st_one_edge.b_temporal) st_one_edge.b_social = true;
-            // temporal
-            else if (one_edge.find(schema::json_comm_window_size) != one_edge.end() 
-                && one_edge.find(schema::json_comm_window_step) != one_edge.end()) {
-                comm_params[schema::json_comm_window_size] = one_comm[schema::json_comm_window_size];
-                comm_params[schema::json_comm_window_step] = one_comm[schema::json_comm_window_step];
-                st_one_edge.b_social = true;
-            }
             // overlapping
             if (one_comm.find(schema::json_comm_overlap) != one_comm.end()) {
                 st_one_edge.b_overlap = true;
@@ -942,7 +949,7 @@ void Generation::socialGraph(St_EdgeGeneration& st_edge) {
         }
     }
 
-#ifdef DEBUG
+#ifdef DEBUG 
     std::cout << "[Generation::socialGraph] #Communities = " << an_comms << std::endl;
     for (int i = 0; i < an_comms; ++i)
         std::cout << split[i][0] << " , " << split[i][1] << std::endl;
@@ -1007,9 +1014,9 @@ void Generation::socialGraph(St_EdgeGeneration& st_edge) {
         std::unordered_set<int_t> nbrs;
         while (sp_col_j < an_comms) {
             int_t num;
-            if (sp_col_j == sp_row_i) {
+            if (sp_col_j == sp_row_i) { // 社区内的出度
                 num = main_out_degree;
-            } else {
+            } else {    // 社区间的出度
                 num = Utility::mathRound(extra_out_degree * 1.0 * split[sp_col_j][1] / (1.0 * (t_nodes - split[sp_row_i][1])));
             }
 
@@ -1370,7 +1377,6 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
     std::unordered_map<std::string, int_t>& temporal_params = st_edge.temporal_params;
     int_t mit = temporal_params[schema::json_edge_min_timestamp];
     int_t mat = temporal_params[schema::json_edge_max_timestamp];
-    std::cout << "mit, mat: " << mit << ", " << mat << std::endl;
     Timestamp timer(mit, mat);
 
     // show process
@@ -1445,16 +1451,14 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
 #endif
 
         // unique to each thread
-        std::vector<int_t> nbrs;
         int_t out_degree = out_dist->genOutDegree(i);
+        std::vector<int_t> nbrs(out_degree);
         std::vector<std::vector<int_t>> tss(out_degree); // `out_degree` groups of timestamps
         int_t sum = 0;
         for (int_t j = 0; j < out_degree; ++j) {
             // one neighbor of node i
             int_t nbr = in_dist->genTargetID();
-            while (is_homo && nbr == i) {
-                nbr = in_dist->genTargetID();
-            }
+            while (is_homo && nbr == i) { nbr = in_dist->genTargetID(); }
             int_t ts_num = timer.genTimestampNum();
             for (int_t k = 0; k < ts_num; ++k) {
                 // one timestamp of edge (i, n)
@@ -1475,7 +1479,7 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
 #endif
             // END PATCH
 
-            nbrs.push_back(nbr);
+            nbrs[j] = nbr;
         }
 
 #ifdef PARALLEL
@@ -1553,6 +1557,7 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
     // according to st_edge
     std::unordered_map<std::string, double>& out_params = st_edge.out_params;
     std::unordered_map<std::string, double>& in_params = st_edge.in_params;
+    std::unordered_map<std::string, double>& comm_params = st_edge.comm_params;
     std::string& ind_type = st_edge.ind_type;
     std::string& outd_type = st_edge.outd_type;
     int_t s_nodes = st_edge.s_nodes;
@@ -1560,38 +1565,19 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
     int_t n_edges = st_edge.n_edges;
     std::string& filename = st_edge.filename;
 
+    Timestamp& timer = st_edge.timer;
+    std::unordered_map<std::string, int_t>& temporal_params = st_edge.temporal_params;
+    std::vector<std::vector<int_t>>& windSplit = st_edge.windSplit;
+    std::vector<std::unordered_map<int_t, double>>& olAnchorComm = st_edge.olAnchorComm;
+
+    // start information
+    // gp_tag = "Edge-social" + st_edge.e_source + "-" + st_edge.e_target;
     gp_tag = st_edge.e_label;
-    std::cout << "[Generation::simpleGraph]: " << st_edge.e_source << " -> " << st_edge.e_target << std::endl;
+    std::cout << "[Generation::socialGraph]: " << st_edge.e_source << " -> " << st_edge.e_target << std::endl;
     bool is_homo = (st_edge.e_source == st_edge.e_target);
 
-    int_t id_min = in_params[schema::json_dist_min_degree];
-    int_t id_max = in_params[schema::json_dist_max_degree];
-    int_t od_min = out_params[schema::json_dist_min_degree];
-    int_t od_max = out_params[schema::json_dist_max_degree];
-
-    Distribution *out_dist = getDist(od_min, od_max, s_nodes, n_edges, out_params, true, outd_type);
-
-#ifdef DEBUG
-    std::cout << "[Generation::simpleGraph] Out distribution" << std::endl;
-#endif
-
-    Distribution *in_dist = getDist(id_min, id_max, t_nodes, n_edges, in_params, false, ind_type);
-
-#ifdef DEBUG
-    std::cout << "[Generation::simpleGraph] In distribution" << std::endl;
-#endif
-    
-    std::unordered_map<std::string, int_t>& temporal_params = st_edge.temporal_params;
-    int_t mit = temporal_params[schema::json_edge_min_timestamp];
-    int_t mat = temporal_params[schema::json_edge_max_timestamp];
-    std::cout << "mit, mat: " << mit << ", " << mat << std::endl;
-    Timestamp timer(mit, mat);
-
-    // show process
-    double cur = 0.0;
-    double progress = 0.0;
-    ProgressBar progress_bar;
     int_t actual_edges = 0;
+    int_t extra_edges = 0;
 
 #ifdef PARALLEL
     std::vector<Store*> store_list;
@@ -1603,162 +1589,279 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
     Store *store = new Store(filename, g_enum_format);
 #endif
 
+    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)    
 #ifdef PATCH_VPP
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
     bool b_patch = false;
-    Store *patch_store = nullptr;
-    std::vector<Store*> patch_store_list;
-    std::vector<std::string> url_list;
-
-    if (st_edge.e_source == "Page" && st_edge.e_target == "VPerson") {
+    if (st_edge.e_source == "VPerson" && st_edge.e_target == "VPerson") {
         b_patch = true;
-        std::string pp_filename = filename + "_co_occurrence";
-
-#ifdef PARALLEL
-        for (int i = 0; i < n_threads; ++i) {
-            std::string fn_thread = pp_filename + "_" + std::to_string(i);
-            patch_store_list.push_back(new Store(fn_thread, g_enum_format));
-        }
-#else
-        patch_store = new Store(pp_filename, g_enum_format);
-#endif
-
-        std::ifstream fin("urls.txt");
-        if (!fin.is_open()) {
-            std::cout << "Cannot open urls.txt" << std::endl;
-        }
-        std::string a_url;
-        while (std::getline(fin, a_url)) {
-            url_list.push_back(a_url);
-        }
     }
 #endif
     // END PATCH
 
-    // parallel FOR EACH NODE
+    int_t n_comm = comm_params[schema::json_comm_amount];
+    double comm_lambda = comm_params[schema::json_comm_lambda];
+    double comm_rho = comm_params[schema::json_comm_rho];
+
+#ifdef DEBUG
+    std::cout << "[Generation::socialGraph] Before splitting ..." << std::endl;
+#endif
+
+    std::vector<std::vector<int_t>>& split = st_edge.commSplit;
+    int an_comms = split.size();
+
+    // for original parallel version
+    std::vector<int_t> sp_row_id(s_nodes, 0);
+    std::vector<int_t> cumu_row_id(s_nodes, 0);
+    int_t gi = 0, sri = 0, cri = 0;
+    for (int i = 0; i < an_comms; ++i) {
+        for (int_t j = 0; j < split[i][0]; ++j) {
+            sp_row_id[gi] = i;
+            cumu_row_id[gi] = j;
+            gi ++;
+        }
+    }
+
+#ifdef DEBUG 
+    std::cout << "[Generation::socialGraph] #Communities = " << an_comms << std::endl;
+    for (int i = 0; i < an_comms; ++i)
+        std::cout << split[i][0] << " , " << split[i][1] << std::endl;
+#endif
+
+    int_t id_min = in_params[schema::json_dist_min_degree];
+    int_t id_max = in_params[schema::json_dist_max_degree];
+    int_t od_min = out_params[schema::json_dist_min_degree];
+    int_t od_max = out_params[schema::json_dist_max_degree];
+    std::unordered_map<int, Distribution*> row_dist;
+    std::unordered_map<int, Distribution*> col_dist;
+    for (int i = 0; i < an_comms; ++i) {
+        if (!row_dist.count(split[i][0])) {
+            int_t sub_edges = Utility::mathRound(split[i][0] * 1.0 / s_nodes * n_edges);
+            row_dist[split[i][0]] = getDist(od_min, od_max, split[i][0], sub_edges, out_params, true, outd_type);
+        }
+        if (!col_dist.count(split[i][1])) {
+            int_t sub_edges = Utility::mathRound(split[i][1] * 1.0 / t_nodes * n_edges);
+            col_dist[split[i][1]] = getDist(id_min, id_max, split[i][1], sub_edges, in_params, false, ind_type);
+        }
+    }
+
+    int_t cumu_row = 0;
+    int_t sp_row_i = 0;
+
+    // show process
+    double cur = 0.0;
+    double progress = 0.0;
+    ProgressBar progress_bar;
+
+    // generate START
 #ifdef PARALLEL
     #pragma omp parallel for schedule (dynamic, thread_chunk_size)
 #endif
     for (int_t i = 0; i < s_nodes; ++i) {
         Store *store_ptr = nullptr;
-#ifdef PATCH_VPP
-        Store *patch_store_ptr = nullptr;
-#endif
-
 #ifdef PARALLEL
         int tid = omp_get_thread_num();
         store_ptr = store_list[tid];
-#ifdef PATCH_VPP
-        patch_store_ptr = patch_store_list[tid];
-#endif
 #else
         store_ptr = store;
-#ifdef PATCH_VPP
-        patch_store_ptr = patch_store;
-#endif
 #endif
 
         // unique to each thread
-        std::vector<int_t> nbrs;
-        int_t out_degree = out_dist->genOutDegree(i);
-        std::vector<std::vector<int_t>> tss(out_degree); // `out_degree` groups of timestamps
-        int_t sum = 0;
-        for (int_t j = 0; j < out_degree; ++j) {
-            // one neighbor of node i
-            int_t nbr = in_dist->genTargetID();
-            while (is_homo && nbr == i) {
-                nbr = in_dist->genTargetID();
-            }
-            int_t ts_num = timer.genTimestampNum();
-            for (int_t k = 0; k < ts_num; ++k) {
-                // one timestamp of edge (i, n)
-                int_t ts = timer.genTimestamp();
-                tss[j].push_back(ts);
-            }
-            sum += ts_num;
+        cumu_row = cumu_row_id[i];
+        sp_row_i = sp_row_id[i];
 
-            // PATCH, Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-            if (b_patch) {
-                std::string temp = url_list[i] + "\tvp_" + std::to_string(t) + "_VPerson\tvp_";
-                for (auto one : nbrs) {
-                    std::string attach = temp + std::to_string(one) + "_VPerson\tCo_occurRelation";
-                    patch_store_ptr->writeTSVLine(nbr, one, attach);
+        Distribution *o_dist = row_dist[split[sp_row_i][0]];
+        int_t main_out_degree = o_dist->genOutDegree(cumu_row);
+        int_t extra_out_degree = 0;
+        if (rand.nextReal() < comm_rho)
+            extra_out_degree = extraDegree(od_max - main_out_degree + 10, comm_rho + 1.0);
+
+        // Timestamp timer_i(windSplit[sp_row_i][0], windSplit[sp_row_i][1]);
+
+        int_t cumu_col = 0;
+        int_t sp_col_j = 0;
+        int_t sum = 0;
+        std::vector<int_t> nbrs;
+        std::vector<std::vector<int_t>> tss;
+        while (sp_col_j < an_comms) {
+            int_t num = (sp_col_j == sp_row_i) ? main_out_degree : 
+                Utility::mathRound(extra_out_degree * 1.0 * split[sp_col_j][1] / (1.0 * (t_nodes - split[sp_row_i][1])));
+
+            // within community
+            int_t size = split[sp_col_j][1];
+            if (sp_col_j == sp_row_i) {
+                // coincident parts
+                Distribution *i_dist = col_dist[size];
+                for (int_t xp = 0; xp < num; ++xp) {
+                    int_t t = i_dist->genTargetID();
+                    while (is_homo && t == i) { t = i_dist->genTargetID(); }
+                    nbrs.push_back(t + cumu_col); 
+                    // time window of community `sp_col_i`
+                    tss.push_back(std::vector<int_t>());
+                    int_t ts_num = timer.genTimestampNum();
+                    for (int_t k = 0; k < ts_num; ++k) {
+                        int_t ts = timer.genTimestamp(windSplit[sp_row_i][0], windSplit[sp_row_i][1]);
+                        tss[xp].push_back(ts);
+                    }
+                }
+            } else {
+                // overlapping parts
+                bool flag = false;
+                if (st_edge.b_overlap &&
+                    olAnchorComm[sp_row_i].find(sp_col_j) != olAnchorComm[sp_row_i].end()) {
+                    flag = true;
+                }
+                if (flag && sp_row_i < sp_col_j) {
+                    // double ol = st_edge.dv_overlap;
+                    double ol = olAnchorComm[sp_row_i][sp_col_j];
+                    int_t thre_row_i = (int_t)(split[sp_row_i][0] * ol);
+                    if (cumu_row + 1 >= thre_row_i) {
+                        int_t ol_num = num * 10 * ol;
+                        for (int_t ti = 0; ti < ol_num; ++ti) {
+                            int_t t = rand.nextInt(size);
+                            nbrs.push_back(t + cumu_col);
+                            // time window of community `sp_col_j`
+                            tss.push_back(std::vector<int_t>());
+                            int_t ts_num = timer.genTimestampNum();
+                            for (int_t k = 0; k < ts_num; ++k) {
+                                int_t ts = timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                                tss.back().push_back(ts);
+                            }
+                        }
+                    }
+                }
+                if (flag && sp_row_i > sp_col_j) {
+                    // double ol = st_edge.dv_overlap;
+                    double ol = olAnchorComm[sp_row_i][sp_col_j];
+                    int_t sp_size = (int_t)(size * ol);
+                    int_t ol_size = size - sp_size;
+                    int_t ol_num = num * 10 * (1.0 - ol);
+                    for (int_t ti = 0; ti < ol_num; ++ti) {
+                        int_t t = rand.nextInt(ol_size);
+                        nbrs.push_back(t + cumu_col + sp_size);
+                        // time window of community `sp_col_j`
+                        tss.push_back(std::vector<int_t>());
+                        int_t ts_num = timer.genTimestampNum();
+                        for (int_t k = 0; k < ts_num; ++k) {
+                            int_t ts = timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                            tss.back().push_back(ts);
+                        }
+                    }
                 }
             }
+            // beyond anchor community or between anchor communities
+            // i's communities (source)
+            std::set<int_t> comms_i({sp_row_i});
+            for (auto ol_anchor_comm : olAnchorComm[sp_row_i]) {
+                double ol = ol_anchor_comm.second;
+                int_t thre_row_i = (int_t)(split[sp_row_i][0] * ol);
+                if (cumu_row > thre_row_i) comms_i.insert(ol_anchor_comm.first);
+            }
+            for (int_t ti = 0; ti < 100; ) {    // TODO: 100 ?
+                int_t t = rand.nextInt(size);
+                // t's communities (target)
+                std::set<int_t> comms_j({sp_col_j});
+                for (auto ol_anchor_comm : olAnchorComm[sp_col_j]) {
+                    double ol = ol_anchor_comm.second;
+                    int_t thre_col_j = (int_t)(split[sp_col_j][1] * ol);
+                    if (t > thre_col_j) comms_j.insert(ol_anchor_comm.second);
+                }
+                std::set<int_t> comms_ij;   // intersection set
+                set_intersection(comms_i.begin(), comms_i.end(), comms_j.begin(), comms_j.end(), 
+                    inserter(comms_ij, comms_ij.begin()));
+
+                if (comms_ij.empty()) {
+                    // beyond: assign any timestamp
+                    tss.push_back(std::vector<int_t>());
+                    int_t ts_num = timer.genTimestampNum();
+                    for (int_t k = 0; k < ts_num; ++k) {
+                        int_t ts = timer.genTimestamp();
+                        tss.back().push_back(ts);
+                    }
+                    nbrs.push_back(t + cumu_col);
+                    ++ti;   // succeed
+                } else {
+                    // between: common time window
+                    std::vector<std::vector<int_t>> window_ij;
+                    for (auto comm : comms_ij) { window_ij.push_back(windSplit[comm]); }
+                    auto window_ij_unn = Utility::unionWindow(window_ij);
+                    auto window_ij_cpl = Utility::compleWindow(window_ij_unn,
+                        temporal_params[schema::json_edge_min_timestamp],
+                        temporal_params[schema::json_edge_max_timestamp]);
+                    if (window_ij_cpl.empty()) continue;
+                    // assign some timestamp that is not inside window_ij
+                    tss.push_back(std::vector<int_t>());
+                    int_t ts_num = timer.genTimestampNum();
+                    for (int_t k = 0; k < ts_num; ++k) {
+                        int_t ts = timer.genTimestamp(window_ij_cpl);
+                        tss.back().push_back(ts);
+                    }
+                    nbrs.push_back(t + cumu_col);
+                    ++ti;   // succeed
+                }
+            }
+
+            // if (is_homo && nbrs.count(i)) {
+            //     nbrs.erase(i);
+            // }
+
+#ifdef PARALLEL
+            #pragma omp atomic
+#endif
+            actual_edges += nbrs.size();
+            if (sp_col_j != sp_row_i)
+#ifdef PARALLEL
+                #pragma omp atomic
+#endif
+                extra_edges += nbrs.size();
+            
+            // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
+#ifdef PATCH_VPP
+            if (b_patch) {
+                for (auto n : nbrs) {
+                    int_t ri = rand.nextInt(patch_contact_list.size() - 1);
+                    std::string attach = patch_contact_list[ri] + "\tvp_" + std::to_string(i) + "_VPerson\tvp_" + std::to_string(n) + "_VPerson\tContactRelation";
+                    store_ptr->writeTSVLine(i, n, attach);
+                }
+            } else {
+                store_ptr->writeLine(i, nbrs, tss);
+            }
+#else
+            store_ptr->writeLine(i, nbrs, tss);
 #endif
             // END PATCH
 
-            nbrs.push_back(nbr);
+            nbrs.clear();
+            cumu_col += split[sp_col_j][1];
+            sp_col_j ++;
         }
 
-#ifdef PARALLEL
-        #pragma omp atomic
-#endif
-        actual_edges += sum;
-
-        // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-        if (b_patch) {
-            for (auto one : nbrs) {
-                std::string attach = "vp_" + std::to_string(one) + "_VPerson\tp_" + std::to_string(i) + "_Page\tOccurRelation";
-                store_ptr->writeTSVLine(one, i, attach);
-            }
-        } else {
-            store_ptr->writeLine(i, nbrs, tss);
-        }
-#else
-        store_ptr->writeLine(i, nbrs, tss);
-#endif
-        // END PATCH
-
-        nbrs.clear();
-        tss.clear();
-        cur = (double)actual_edges / (double)n_edges;
+        cur = (double)actual_edges / (double) n_edges;
         if (cur - progress >= 0.01) {
 #ifdef PARALLEL
             #pragma omp atomic
 #endif
             progress += 0.01;
             gp_progress = progress;
-            // showProgress();
             progress_bar.set_progress(progress);
         }
     }
+    // generate END
 
     // Store close
 #ifdef PARALLEL
     for (int i = 0; i < n_threads; ++i) {
         store_list[i]->close();
     }
-
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-    if (b_patch) {
-        for (int i = 0; i < n_threads; ++i) {
-            patch_store_list[i]->close();
-        }
-    }
-#endif
-    // END PATCH
-
 #else
     store->close();
-
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-    if (b_patch) {
-        patch_store->close();
-    }
-#endif
-    // END PATCH
-
 #endif
 
     gp_progress = 1.0;
-    std::cout << "[Generation::temporalSimpleGraph] #Source Nodes = " << s_nodes << ", #Target Nodes = " << t_nodes << std::endl;
-    std::cout << "[Generation::temporalSimpleGraph] #Actual Edges = " << actual_edges << std::endl;
-    std::cout << "[Generation::temporalSimpleGraph] #Expect Edges = " << n_edges << std::endl;
+    // Output info
+    std::cout << "[Generation::socialGraph] #Source Nodes = " << s_nodes << " , #Target Nodes = " << t_nodes << std::endl;
+    std::cout << "[Generation::socialGraph] #Actual Edges = " << actual_edges << std::endl;
+    std::cout << "[Generation::socialGraph] #Extra Edges = " << extra_edges << std::endl;
+    std::cout << "[Generation::socialGraph] #Expect Edges = " << n_edges << std::endl;
 
     actual_edge_nums[st_edge.e_label] = actual_edges;
 }

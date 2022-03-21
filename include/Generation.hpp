@@ -29,11 +29,15 @@ typedef struct _generate_edge {
     std::string basename;
     // temporal
     bool b_temporal;
+    Timestamp timer;
     std::unordered_map<std::string, int_t> temporal_params;
     // community
     bool b_social;
     std::unordered_map<std::string, double> comm_params;
     std::vector<std::vector<int_t>> commSplit;
+        // for anchor community
+    std::vector<std::vector<int_t>> windSplit;
+    std::vector<std::unordered_map<int_t, double>> olAnchorComm;
     // overlap
     bool b_overlap;
     double dv_overlap;
