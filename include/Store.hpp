@@ -4,6 +4,7 @@
  */
 #pragma once
 
+#include <set>
 #include "headers.hpp"
 #include "types.hpp"
 #include "BufferWriter.hpp"
@@ -162,19 +163,17 @@ public:
         }
     }
 
-    void writeLine(int_t i, std::vector<int_t>& adj, std::vector<std::vector<int_t>>& ts) {
-        if (adj.empty() || ts.empty()) return;
+    void writeLine(int_t i, std::set<std::pair<int_t, int_t>>& adj) {
+        if (adj.empty()) return;
 
         int_t n = adj.size();
         // TODO: consider different formats
-        for (int_t j = 0; j < n; j++) { // TSV
+        for (auto p : adj) {    // TSV
             bw->write(i);
             bw->tab();
-            bw->write(adj[j]);
-            for (auto t : ts[j]) {
-                bw->tab();
-                bw->write(t);
-            }
+            bw->write(p.first);
+            bw->tab();
+            bw->write(p.second);
             bw->newline();
             current_file_lines ++;
             if (current_file_lines == file_lines_upper) {

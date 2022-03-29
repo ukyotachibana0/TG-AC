@@ -204,7 +204,7 @@ std::vector<std::vector<int_t>> Utility::splitCommunity(
     return ans;
 }
 
-std::vector<std::vector<int_t>> splitWindow(int_t n, int_t sz, int_t min_ts, int_t max_ts) {
+std::vector<std::vector<int_t>> Utility::splitWindow(int_t n, int_t sz, int_t min_ts, int_t max_ts) {
     std::vector<std::vector<int_t>> ans(n, std::vector<int_t>({min_ts, max_ts}));
     if (n == 1) return ans;
 
@@ -221,7 +221,7 @@ std::vector<std::vector<int_t>> splitWindow(int_t n, int_t sz, int_t min_ts, int
     return ans;
 }
 
-std::vector<std::vector<int_t>> unionWindow(const std::vector<std::vector<int_t>>& window) {
+std::vector<std::vector<int_t>> Utility::unionWindow(const std::vector<std::vector<int_t>>& window) {
     std::vector<std::vector<int_t>> ans;
     int_t n = window.size(), i = 0;
     while (i < n - 1) {
@@ -236,7 +236,7 @@ std::vector<std::vector<int_t>> unionWindow(const std::vector<std::vector<int_t>
     return ans;
 }
 
-std::vector<std::vector<int_t>> compleWindow(const std::vector<std::vector<int_t>>& window, 
+std::vector<std::vector<int_t>> Utility::compleWindow(const std::vector<std::vector<int_t>>& window,
     int_t e_mit, int_t e_mat) {
     std::vector<std::vector<int_t>> ans;
     if (e_mit < window.front()[0]) ans.push_back({e_mit, window.front()[0]});
@@ -247,7 +247,7 @@ std::vector<std::vector<int_t>> compleWindow(const std::vector<std::vector<int_t
 }
 
 
-std::vector<std::unordered_map<int_t, double>> idenOlAnchorComm(int_t n) {
+std::vector<std::unordered_map<int_t, double>> Utility::idenOlAnchorComm(int_t n) {
     std::vector<std::unordered_map<int_t, double>> ans(n);
     int_t n_pair = n / 2, i = 0;    // every community gets a overlapping anchor community on average
     Random rand;

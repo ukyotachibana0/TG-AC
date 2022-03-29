@@ -23,10 +23,10 @@ public:
 
     Timestamp (int_t mit, int_t mat) : min_timestamp(mit), max_timestamp(mat) {}
 
-    int_t genTimestampNum () {
-        // TODO
-        return 1 + rand.nextInt(1); // 1 or 2
-    }
+    // int_t genTimestampNum () {
+    //     // TODO
+    //     return 1; // 1 or 2
+    // }
 
     int_t genTimestamp () {
         int_t bound = max_timestamp - min_timestamp;
