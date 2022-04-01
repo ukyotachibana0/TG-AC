@@ -215,9 +215,16 @@ std::vector<std::vector<int_t>> Utility::splitWindow(int_t n, int_t sz, int_t mi
     for (int_t i = 0; i < n - 1; ++i) {
         ans[i][0] = ts;
         ans[i][1] = ts + sz;
-        ts += sz - ol;
+        ts += sz + ol;
     }
     ans[n - 1][0] = max_ts - sz;
+
+    /*std::cout << "[Utility::splitWindow] ans: ";
+    for (auto v : ans) {
+        std::cout << "[" << v[0] << "," << v[1] << "]  ";
+    }
+    std::cout << std::endl;*/
+
     return ans;
 }
 
@@ -233,6 +240,13 @@ std::vector<std::vector<int_t>> Utility::unionWindow(const std::vector<std::vect
         i = j + 1;
     }
     if (i == n - 1) ans.push_back(window.back());
+
+    /*std::cout << "[Utility::unionWindow] ans: ";
+    for (auto v : ans) {
+        std::cout << "[" << v[0] << "," << v[1] << "]  ";
+    }
+    std::cout << std::endl;*/
+
     return ans;
 }
 
@@ -243,6 +257,13 @@ std::vector<std::vector<int_t>> Utility::compleWindow(const std::vector<std::vec
     int n = window.size();
     for (int i = 0; i < n - 1; ++i) { ans.push_back({window[i][1], window[i + 1][0]}); }
     if (e_mat > window.back()[1]) ans.push_back({window.back()[1], e_mat});
+
+    /*std::cout << "[Utility::compleWindow] ans: ";
+    for (auto v : ans) {
+        std::cout << "[" << v[0] << "," << v[1] << "]  ";
+    }
+    std::cout << std::endl;*/
+
     return ans;
 }
 
@@ -254,11 +275,22 @@ std::vector<std::unordered_map<int_t, double>> Utility::idenOlAnchorComm(int_t n
     while (i < n_pair) {
         std::pair<int_t, int_t> one_pair(rand.nextInt(n - 1), rand.nextInt(n - 1));
         if (one_pair.first == one_pair.second) continue;
-        double ol = rand.nextReal(0.5);
+        double ol = rand.nextReal(0.2);
         if (ans[one_pair.first].insert({one_pair.second, ol}).second &&
             ans[one_pair.second].insert({one_pair.first, ol}).second) 
             ++i;
     }
+
+    std::cout << "[Utility::idenOlAnchorComm] ans:" << std::endl;
+    for (int i = 0; i < n; i++) {
+        std::cout << "\t" << i << ": ";
+        for (auto p : ans[i]) {
+            std::cout << "(" << p.first << "," << p.second << ")  ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+
     return ans;
 }
 
