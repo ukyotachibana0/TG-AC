@@ -17,3 +17,6 @@ _deps
 
 # Visual Studio
 .vs
+
+# out
+out
