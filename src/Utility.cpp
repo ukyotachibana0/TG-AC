@@ -47,6 +47,14 @@ void Utility::showList(const std::vector<int_t>& list) {
     std::cout << std::endl;
 }
 
+std::vector<int_t> Utility::splitDegree(const std::vector<std::vector<int_t>>& comm_split, int_t c, bool pos) {
+    int n = comm_split.size();
+    std::vector<int_t> w(n);
+    for (int i = 0; i < n; i++) { w[i] = comm_split[i][pos]; }
+    Random rand;
+    return rand.nextInts(w, c);
+}
+
 std::vector<int_t> Utility::splitScalar(int_t n, int_t k, double lambda) {
     lambda = -fabs(lambda);
     int_t avg_size = n / k;
@@ -273,23 +281,23 @@ std::vector<std::unordered_map<int_t, double>> Utility::idenOlAnchorComm(int_t n
     int_t n_pair = n / 2, i = 0;    // every community gets a overlapping anchor community on average
     Random rand;
     while (i < n_pair) {
-        std::pair<int_t, int_t> one_pair(rand.nextInt(n - 1), rand.nextInt(n - 1));
-        if (one_pair.first == one_pair.second) continue;
-        double ol = rand.nextReal(0.2);
-        if (ans[one_pair.first].insert({one_pair.second, ol}).second &&
-            ans[one_pair.second].insert({one_pair.first, ol}).second) 
-            ++i;
+       std::pair<int_t, int_t> one_pair(rand.nextInt(n - 1), rand.nextInt(n - 1));
+       if (one_pair.first == one_pair.second) continue;
+       double ol = rand.nextReal(0.2);
+       if (ans[one_pair.first].insert({one_pair.second, ol}).second &&
+           ans[one_pair.second].insert({one_pair.first, ol}).second) 
+           ++i;
     }
 
-    std::cout << "[Utility::idenOlAnchorComm] ans:" << std::endl;
-    for (int i = 0; i < n; i++) {
-        std::cout << "\t" << i << ": ";
-        for (auto p : ans[i]) {
-            std::cout << "(" << p.first << "," << p.second << ")  ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
+    // std::cout << "[Utility::idenOlAnchorComm] ans:" << std::endl;
+    // for (int i = 0; i < n; i++) {
+    //     std::cout << "\t" << i << ": ";
+    //     for (auto p : ans[i]) {
+    //         std::cout << "(" << p.first << "," << p.second << ")  ";
+    //     }
+    //     std::cout << std::endl;
+    // }
+    // std::cout << std::endl;
 
     return ans;
 }

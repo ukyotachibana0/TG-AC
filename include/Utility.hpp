@@ -6,6 +6,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+// #include <algorithm>
 #include "types.hpp"
 
 namespace gl {
@@ -24,6 +25,8 @@ public:
 
     static void showList(const std::vector<int_t>& list);
 
+    static std::vector<int_t> splitDegree(const std::vector<std::vector<int_t>>& comm_split, int_t c, bool pos);
+    
     static std::vector<int_t> splitScalar(int_t n, int_t k, double lambda);
 
     static std::vector<std::vector<int_t>> splitCommunity(int_t row, int_t col, int_t k, double lambda);

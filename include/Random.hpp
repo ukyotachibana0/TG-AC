@@ -47,6 +47,13 @@ public:
         return uni_int(generator);
     }
 
+    std::vector<int_t> nextInts(const std::vector<int_t>& w, int_t c) {
+        std::vector<int_t> ans(w.size());
+        std::discrete_distribution<int_t> dis_int(w.begin(), w.end());
+        for (int i = 0; i < c; i++) { ans[dis_int(generator)]++; }
+        return ans;
+    }
+
 }; //! class Random
 
 } //! namespace fastsgg
