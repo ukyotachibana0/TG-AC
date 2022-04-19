@@ -14,8 +14,7 @@
       "amount": 80000,
       "in": {"type": "power_law", "lambda": 1.15, "min_d": 1, "max_d": 50},
       "out": {"type": "power_law", "lambda": 1.15, "min_d": 1, "max_d": 60},
-      "min_ts": -1000,
-      "max_ts": -100,
+      "temporal": {"type": "power_law", "lambda": 1.15, "min_ts": 0, "max_ts": 800},
       "community": {
         "amount": 100,
         "rho": 0.6,
