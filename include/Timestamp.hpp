@@ -19,14 +19,9 @@ private:
     Random rand;
 
 public:
-    Timestamp () {}
+    Timestamp () : min_timestamp(0), max_timestamp(0) {}
 
     Timestamp (int_t mit, int_t mat) : min_timestamp(mit), max_timestamp(mat) {}
-
-    // int_t genTimestampNum () {
-    //     // TODO
-    //     return 1; // 1 or 2
-    // }
 
     int_t genTimestamp () {
         int_t bound = max_timestamp - min_timestamp;
@@ -40,16 +35,11 @@ public:
     }
 
     int_t genTimestamp (const std::vector<std::vector<int_t>>& window) {
-        /*std::cout << "[Timestamp::genTimestamp] window: ";
-        for (auto& w : window) { std::cout << "[" << w[0] << "," << w[1] << "] "; }
-        std::cout << std::endl;*/
-
         int_t ans = 0;
         // gen mapped ans
         int_t bound = 0, n = window.size();
         for (auto& win : window) { bound += win[1] - win[0]; }
         int_t ans_map = rand.nextInt(bound);
-        //std::cout << "[Timestamp::genTimestamp] bound: " << bound << " ans_map: " << ans_map << std::endl;
         // gen original ans
         int_t last_sum = 0, sum = window[0][1] - window[0][0];
         for (int_t i = 1; i < n; i++) {

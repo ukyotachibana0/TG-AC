@@ -29,8 +29,8 @@ typedef struct _generate_edge {
     std::string basename;
     // temporal
     bool b_temporal;
-    Timestamp timer;
-    std::unordered_map<std::string, int_t> temporal_params;
+    std::string temp_type;
+    std::unordered_map<std::string, double> temp_params;
     // community
     bool b_social;
     std::unordered_map<std::string, double> comm_params;

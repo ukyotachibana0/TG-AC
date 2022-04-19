@@ -56,8 +56,18 @@ const static std::string json_edge_label = "label";
 const static std::string json_edge_source = "source";
 const static std::string json_edge_target = "target";
 const static std::string json_edge_amount = "amount";
-const static std::string json_edge_min_timestamp = "min_ts";
-const static std::string json_edge_max_timestamp = "max_ts";
+// temporal
+const static std::string json_temp = "temporal";
+const static std::string json_temp_type = "type";
+const static std::string json_temp_PowerLaw = "power_law";
+const static std::string json_temp_Normal = "normal";   // Gaussian
+const static std::string json_temp_Uniform = "uniform";
+const static std::string json_temp_LogNormal = "log_normal";
+const static std::string json_temp_min_timestamp = "min_ts";
+const static std::string json_temp_max_timestamp = "max_ts";
+const static std::string json_temp_PL_lambda = "lambda";
+const static std::string json_temp_Nor_mu = "mu";
+const static std::string json_temp_Nor_sigma = "sigma";
 // distribution
 const static std::string json_in_dist = "in";
 const static std::string json_out_dist = "out";
