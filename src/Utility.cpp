@@ -19,7 +19,7 @@ double Utility::mathCeil(double x) {
 }
 
 double Utility::mathRound(double x) {
-    double y = (double)((int)(x));
+    double y = (double)((int)x);
     double delta = x - y;
     if (delta > 0.5) return (y + 1.0);
     else if (delta >= -0.5 && delta <= 0.5) return y;
@@ -219,19 +219,31 @@ std::vector<std::vector<int_t>> Utility::splitWindow(int_t n, int_t sz, int_t mi
     int_t total_ol = (max_ts - min_ts) - n * sz;
     if (total_ol == 0) return ans;
 
-    int_t ol = total_ol / (n - 1), ts = min_ts;
+    // equidistant(except at the ending part) and of equal length
+    double ol = total_ol / (1.0 * (n - 1)), ts = min_ts;
     for (int_t i = 0; i < n - 1; ++i) {
-        ans[i][0] = ts;
-        ans[i][1] = ts + sz;
+        ans[i][0] = mathRound(ts);
+        ans[i][1] = mathRound(ts + sz);
         ts += sz + ol;
     }
     ans[n - 1][0] = max_ts - sz;
 
-    /*std::cout << "[Utility::splitWindow] ans: ";
-    for (auto v : ans) {
-        std::cout << "[" << v[0] << "," << v[1] << "]  ";
+    // adjust right endpoints of each intervals(except the last one)
+    Random rand;
+    const int_t padding = sz / 10;
+    for (int_t i = 0; i < n - 1; i++) {
+        int_t right_min = (i ? std::max(ans[i - 1][1], ans[i][0]) : ans[i][0]) + padding;
+        int_t right_max = ans[i + 1][1] - padding;
+        ans[i][1] = rand.nextInt(right_max - right_min) + right_min;
     }
-    std::cout << std::endl;*/
+
+    /*int_t sz_avg = 0;
+    std::cout << "[Utility::splitWindow] ans: ";
+    for (auto v : ans) {
+        std::cout << "[" << v[0] << "," << v[1] << "](" << v[1] - v[0] + 1 << ") ";
+        sz_avg += v[1] - v[0] + 1;
+    }
+    std::cout << std::endl << "\taverage size: " << sz_avg / (1.0 * n) << std::endl;*/
 
     return ans;
 }

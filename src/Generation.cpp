@@ -237,16 +237,13 @@ bool Generation::check_json() {
                     ans = false;
                 }
             } else if (temp_type == schema::json_temp_Normal || temp_type == schema::json_temp_LogNormal) {
-                if (temp.find(schema::json_dist_Nor_mu) == temp.end()) {
-                    std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_temp << "'] ([Log]Normal mu)." << std::endl;
-                    ans = false;
-                    continue;
-                }
-                if (!temp[schema::json_dist_Nor_mu].is_number()) {
+                // mu(optional)
+                if (temp.find(schema::json_dist_Nor_mu) != temp.end() && !temp[schema::json_dist_Nor_mu].is_number()) {
                     std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_temp << "'] ([Log]Normal mu number)." << std::endl;
                     ans = false;
                     continue;
                 }
+                // sigma(required)
                 if (temp.find(schema::json_dist_Nor_sigma) == temp.end()) {
                     std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_temp << "'] ([Log]Normal sigma)." << std::endl;
                     ans = false;
@@ -576,9 +573,9 @@ void Generation::generate_plan() {
             temp_params[schema::json_temp_max_timestamp] = one_temporal[schema::json_temp_max_timestamp];
             if (one_temporal.find(schema::json_temp_PL_lambda) != one_temporal.end())
                 temp_params[schema::json_temp_PL_lambda] = one_temporal[schema::json_temp_PL_lambda];
-            else if (one_temporal.find(schema::json_temp_Nor_mu) != one_temporal.end())
+            if (one_temporal.find(schema::json_temp_Nor_mu) != one_temporal.end())
                 temp_params[schema::json_temp_Nor_mu] = one_temporal[schema::json_temp_Nor_mu];
-            else if (one_temporal.find(schema::json_temp_Nor_sigma) != one_temporal.end())
+            if (one_temporal.find(schema::json_temp_Nor_sigma) != one_temporal.end())
                 temp_params[schema::json_temp_Nor_sigma] = one_temporal[schema::json_temp_Nor_sigma];
         }
 
@@ -591,9 +588,9 @@ void Generation::generate_plan() {
         out_params[schema::json_dist_max_degree] = out_dist[schema::json_dist_max_degree];
         if (out_dist.find(schema::json_dist_PL_lambda) != out_dist.end())
             out_params[schema::json_dist_PL_lambda] = out_dist[schema::json_dist_PL_lambda];
-        else if (out_dist.find(schema::json_dist_Nor_mu) != out_dist.end())
+        if (out_dist.find(schema::json_dist_Nor_mu) != out_dist.end())
             out_params[schema::json_dist_Nor_mu] = out_dist[schema::json_dist_Nor_mu];
-        else if (out_dist.find(schema::json_dist_Nor_sigma) != out_dist.end())
+        if (out_dist.find(schema::json_dist_Nor_sigma) != out_dist.end())
             out_params[schema::json_dist_Nor_sigma] = out_dist[schema::json_dist_Nor_sigma];
 
         // In-Degree Distribution
@@ -605,9 +602,9 @@ void Generation::generate_plan() {
         in_params[schema::json_dist_max_degree] = in_dist[schema::json_dist_max_degree];
         if (in_dist.find(schema::json_dist_PL_lambda) != in_dist.end())
             in_params[schema::json_dist_PL_lambda] = in_dist[schema::json_dist_PL_lambda];
-        else if (in_dist.find(schema::json_dist_Nor_mu) != in_dist.end())
+        if (in_dist.find(schema::json_dist_Nor_mu) != in_dist.end())
             in_params[schema::json_dist_Nor_mu] = in_dist[schema::json_dist_Nor_mu];
-        else if (in_dist.find(schema::json_dist_Nor_sigma) != in_dist.end())
+        if (in_dist.find(schema::json_dist_Nor_sigma) != in_dist.end())
             in_params[schema::json_dist_Nor_sigma] = in_dist[schema::json_dist_Nor_sigma];
 
         // Community Distribution (optional)
@@ -1456,13 +1453,15 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
     // according to st_edge
     std::unordered_map<std::string, double>& out_params = st_edge.out_params;
     std::unordered_map<std::string, double>& in_params = st_edge.in_params;
-    std::unordered_map<std::string, double>& temp_params = st_edge.temp_params;
     std::string& ind_type = st_edge.ind_type;
     std::string& outd_type = st_edge.outd_type;
     int_t s_nodes = st_edge.s_nodes;
     int_t t_nodes = st_edge.t_nodes;
     int_t n_edges = st_edge.n_edges;
     std::string& filename = st_edge.filename;
+
+    std::unordered_map<std::string, double>& temp_params = st_edge.temp_params;
+    std::string& temp_type = st_edge.temp_type;
 
     gp_tag = st_edge.e_label;
     std::cout << "[Generation::temporalSimpleGraph]: " << st_edge.e_source << " -> " << st_edge.e_target << std::endl;
@@ -1485,7 +1484,11 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
     std::cout << "[Generation::temporalSimpleGraph] In distribution" << std::endl;
 #endif
     
-    Timestamp timer(temp_params[schema::json_temp_min_timestamp], temp_params[schema::json_temp_max_timestamp]);
+    int_t ts_min = temp_params[schema::json_temp_min_timestamp];
+    int_t ts_max = temp_params[schema::json_temp_max_timestamp];
+
+    //Timestamp timer(ts_min, ts_max, temp_params);
+    Timestamp* timer = getTimer(ts_min, ts_max, temp_params, temp_type);
 
 #ifdef DEBUG
     std::cout << "[Generation::temporalSimpleGraph] Temporal timestamp" << std::endl;
@@ -1569,7 +1572,7 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
             // one neighbor of node i
             int_t nbr = in_dist->genTargetID();
             while (is_homo && nbr == i) { nbr = in_dist->genTargetID(); }
-            int_t ts = timer.genTimestamp();
+            int_t ts = timer->genTimestamp();
 
             // PATCH, Co-occurrence (Person - Page - Person => Person - Person)
 #ifdef PATCH_VPP
@@ -1662,15 +1665,18 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
     std::unordered_map<std::string, double>& out_params = st_edge.out_params;
     std::unordered_map<std::string, double>& in_params = st_edge.in_params;
     std::unordered_map<std::string, double>& comm_params = st_edge.comm_params;
-    std::unordered_map<std::string, double>& temp_params = st_edge.temp_params;
-    std::vector<std::vector<int_t>>& windSplit = st_edge.windSplit;
-    std::vector<std::unordered_map<int_t, double>>& olAnchorComm = st_edge.olAnchorComm;
     std::string& ind_type = st_edge.ind_type;
     std::string& outd_type = st_edge.outd_type;
     int_t s_nodes = st_edge.s_nodes;
     int_t t_nodes = st_edge.t_nodes;
     int_t n_edges = st_edge.n_edges;
     std::string& filename = st_edge.filename;
+
+    std::unordered_map<std::string, double>& temp_params = st_edge.temp_params;
+    std::string& temp_type = st_edge.temp_type;
+
+    std::vector<std::vector<int_t>>& windSplit = st_edge.windSplit;
+    std::vector<std::unordered_map<int_t, double>>& olAnchorComm = st_edge.olAnchorComm;
 
     // start information
     // gp_tag = "Edge-social" + st_edge.e_source + "-" + st_edge.e_target;
@@ -1749,7 +1755,11 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
         }
     }
 
-    Timestamp timer(temp_params[schema::json_temp_min_timestamp], temp_params[schema::json_temp_max_timestamp]);
+    int_t ts_min = temp_params[schema::json_temp_min_timestamp];
+    int_t ts_max = temp_params[schema::json_temp_max_timestamp];
+    std::vector<Timestamp*> main_timer(an_comms);
+    for (int i = 0; i < an_comms; ++i) { main_timer[i] = getTimer(windSplit[i][0], windSplit[i][1], temp_params, temp_type); }
+    Timestamp* extra_timer = getTimer(ts_min, ts_max, std::unordered_map<std::string, double>(), schema::json_temp_Uniform);
 
     // show process
     double cur = 0.0;
@@ -1808,7 +1818,8 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                     int_t t = i_dist->genTargetID();
                     while (is_homo && i == t + cumu_col) { t = i_dist->genTargetID(); }
                     // time window of community `sp_col_i`
-                    int_t ts = timer.genTimestamp(windSplit[sp_row_i][0], windSplit[sp_row_i][1]);
+                    //int_t ts = extra_timer.genTimestamp(windSplit[sp_row_i][0], windSplit[sp_row_i][1]);
+                    int_t ts = main_timer[sp_row_i]->genTimestamp();
                     if (nbrs.insert({ t + cumu_col, ts }).second) ++ti;
                 }
             } else {
@@ -1831,7 +1842,8 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                             int_t t = rand.nextInt(ol_size - 1);
                             while (is_homo && i == t + cumu_col_psum[sp_row_i] + sp_size) { t = rand.nextInt(ol_size - 1); }
                             // time window of community `sp_col_j`
-                            int_t ts = timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                            //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                            int_t ts = main_timer[sp_col_j]->genTimestamp();
                             //std::cout << "\t\t\twant to add (" << i << "," << t + cumu_col_psum[sp_row_i] + sp_size << ")" << std::endl;
                             if (nbrs.insert({ t + cumu_col_psum[sp_row_i] + sp_size, ts }).second) ++ti;
                         }
@@ -1841,7 +1853,8 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                         for (int_t ti = 0; ti < ol_num; ) {
                             int_t t = rand.nextInt(size_trg_j - 1);
                             // time window of community `sp_col_j`
-                            int_t ts = timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                            //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                            int_t ts = main_timer[sp_col_j]->genTimestamp();
                             if (nbrs.insert({ t + cumu_col, ts }).second) ++ti;
                         }
                     }
@@ -1856,7 +1869,8 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                     for (int_t ti = 0; ti < ol_num; ) {
                         int_t t = rand.nextInt(ol_size - 1);
                         // time window of community `sp_col_j`
-                        int_t ts = timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                        //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                        int_t ts = main_timer[sp_col_j]->genTimestamp();
                         if (nbrs.insert({ t + cumu_col + sp_size, ts }).second) ++ti;
                     }
                 }
@@ -1879,7 +1893,7 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                     inserter(comms_ij, comms_ij.begin()));
                 if (comms_ij.empty()) {
                     // beyond: assign any timestamp
-                    int_t ts = timer.genTimestamp();
+                    int_t ts = extra_timer->genTimestamp();
                     //std::cout << "\t\tts(beyond): " << ts << std::endl;
                     if (nbrs.insert({t + cumu_col, ts}).second) ++ti;   // succeed
                 } else {
@@ -1892,7 +1906,7 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                         temp_params[schema::json_temp_max_timestamp]);
                     if (window_ij_cpl.empty()) continue;
                     //        : assign some timestamp that is not inside window_ij
-                    int_t ts = timer.genTimestamp(window_ij_cpl);
+                    int_t ts = extra_timer->genTimestamp(window_ij_cpl);
                     if (nbrs.insert({ t + cumu_col, ts }).second) ++ti;   // succeed                        
                 }
             }
@@ -1987,7 +2001,7 @@ Distribution* Generation::getDist(int_t mid, int_t mxd, int_t n, int_t m,
 
 OutDegreeDistribution* Generation::getOutDist(int_t mid, int_t mxd, int_t n, int_t m,
         std::unordered_map<std::string, double>& params, std::string& d_type) {
-    OutDegreeDistribution *ans = nullptr;
+    OutDegreeDistribution* ans = nullptr;
     if (d_type == schema::json_dist_PowerLaw) {
         ans = new OutPowerLaw(mid, mxd, n, m, params);
         ans->pre_propcess();
@@ -2000,6 +2014,24 @@ OutDegreeDistribution* Generation::getOutDist(int_t mid, int_t mxd, int_t n, int
     } else {
         std::cerr << "[Generation::getOutDist] Unknown distribution: " << d_type << std::endl;
     }
+    return ans;
+}
+
+Timestamp* Generation::getTimer(int_t mit, int_t mat, std::unordered_map<std::string,
+    double>& params, const std::string& t_type) {
+    Timestamp* ans = nullptr;
+    if (t_type == schema::json_temp_PowerLaw) {
+        ans = new TimestampPowerLaw(mit, mat, params);
+        ans->preProcess();
+    } else if (t_type == schema::json_temp_Normal) {
+        ans = new TimestampNormal(mit, mat, params);
+        ans->preProcess();
+    } else if (t_type == schema::json_temp_LogNormal) {
+        ans = new TimestampLogNormal(mit, mat, params);
+        ans->preProcess();
+    } else if (t_type == schema::json_temp_Uniform) {
+        ans = new TimestampUniform(mit, mat, params);
+    } else { std::cerr << "[Generation::getTimer] Unknown distribution: " << t_type << std::endl; }
     return ans;
 }
 

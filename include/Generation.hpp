@@ -116,6 +116,9 @@ public:
     OutDegreeDistribution* getOutDist(int_t mid, int_t mxd, int_t n, int_t m,
         std::unordered_map<std::string, double>& params, std::string& d_type);
 
+    Timestamp* getTimer(int_t mit, int_t mat, std::unordered_map<std::string,
+        double>& params, const std::string& t_type);
+
     int_t extraDegree(int_t max_degree, double c);
 
     bool path_exists(std::string& path);
