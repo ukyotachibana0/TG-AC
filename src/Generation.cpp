@@ -1800,7 +1800,6 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
 
         int_t cumu_col = 0;
         int_t sp_col_j = 0;
-        bool b_overlap_ij = false;
         std::set<std::pair<int_t, int_t>> nbrs;
         while (sp_col_j < an_comms) {
             // std::cout << "\tsp_col_j: " << sp_col_j << std::endl;
@@ -1824,17 +1823,13 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                 }
             } else {
                 // overlapping parts
-                b_overlap_ij = false;
-                if (st_edge.b_overlap &&
-                    olAnchorComm[sp_row_i].find(sp_col_j) != olAnchorComm[sp_row_i].end()) {
-                    b_overlap_ij = true;
-                }
+                bool b_overlap_ij = olAnchorComm[sp_row_i].find(sp_col_j) != olAnchorComm[sp_row_i].end();
                 if (b_overlap_ij && sp_row_i < sp_col_j) {
                     double ol = olAnchorComm[sp_row_i][sp_col_j];
                     int_t thre_row_i = (int_t)(size_src_i * ol);
                     if (cumu_row_id_i + 1 >= thre_row_i) {
                         // TODO: (b+c)->(b+c): b->b
-                        int_t ol_num = main_out_degree * ol * ol;        // TODO
+                        int_t ol_num = main_out_degree * (1.0 - ol) * (1.0 - ol);        // TODO
                         int_t sp_size = (int_t)(size_trg_i * ol);
                         int_t ol_size = size_trg_i - sp_size;
                         //std::cout << "\t\tb->b: ol_num: " << ol_num << ", sp_size: " << sp_size << ", ol_size: " << ol_size << std::endl;
@@ -1849,7 +1844,7 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                         }
 
                         // (b+c)->(b+c): b->c
-                        ol_num = main_out_degree * ol;       // TODO
+                        ol_num = main_out_degree * (1.0 - ol);       // TODO
                         for (int_t ti = 0; ti < ol_num; ) {
                             int_t t = rand.nextInt(size_trg_j - 1);
                             // time window of community `sp_col_j`
