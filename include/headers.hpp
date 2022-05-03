@@ -88,7 +88,20 @@ const static std::string json_comm_rho = "rho";
 const static std::string json_comm_lambda = "lambda";
 const static std::string json_comm_overlap = "overlap";
 const static std::string json_comm_window_size = "win_size";
-const static std::string json_comm_window_step = "win_step";
+// embedded
+const static std::string json_embd = "embedded";
+const static std::string json_embd_type = "type";
+const static std::string json_embd_map_random = "random";
+const static std::string json_embd_map_positive = "positive";
+const static std::string json_embd_srce_amount = "n_source";
+const static std::string json_embd_trgt_amount = "n_target";
+const static std::string json_embd_edge_amount = "n_edge";
+const static std::string json_embd_comm_amount = "amount";
+const static std::string json_embd_comm_rho = "rho";
+const static std::string json_embd_comm_lambda = "lambda";
+const static std::string json_embd_window_size = "win_size";
+const static std::string json_embd_temp = "temporal";
+    // other paramters configuration repeat using `json_temp`'s constant strings
 // streaming
 const static std::string json_gr = "gr";
 // storage format

@@ -38,6 +38,13 @@ typedef struct _generate_edge {
         // for anchor community
     std::vector<std::vector<int_t>> windSplit;
     std::vector<std::unordered_map<int_t, double>> olAnchorComm;
+        // for embedded anchor community
+    bool b_embedded;
+    std::string embd_temp_type;
+    std::unordered_map<std::string, double> embd_comm_params;
+    std::unordered_map<std::string, double> embd_temp_params;
+    std::vector<std::vector<int_t>> embdWindSplit;
+    std::vector<std::unordered_map<int_t, double>> embdOlAnchorComm;
     // overlap
     bool b_overlap;
     double dv_overlap;
@@ -108,6 +115,8 @@ public:
     void temporalSimpleGraph(St_EdgeGeneration& st_edge);
 
     void temporalSocialGraph(St_EdgeGeneration& st_edge);   // anchor communities
+
+    void embeddedGraph(St_EdgeGeneration& st_edge); // embedded anchor communities
 
     Distribution* getDist(int_t mid, int_t mxd, int_t n, int_t m,
         std::unordered_map<std::string, double>& params,
