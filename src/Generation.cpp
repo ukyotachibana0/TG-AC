@@ -490,7 +490,7 @@ bool Generation::check_json() {
                 continue;
             }
             std::string embd_type = embd[schema::json_embd_type];
-            if (embd_type != schema::json_embd_map_random || embd_type != schema::json_embd_map_positive) {
+            if (embd_type != schema::json_embd_map_neutral || embd_type != schema::json_embd_map_positive) {
                 std::cerr << "[Generation::check_json] Unknown Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (Unknown type of embedding: " << embd_type << ")." << std::endl;
                 ans = false;
                 continue;
