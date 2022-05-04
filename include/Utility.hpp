@@ -42,7 +42,7 @@ public:
 
     static std::vector<int_t> mapNeutrally(int_t n, int_t N);
 
-    static std::vector<int_t> mapPostively(const std::vector<std::vector<int_t>>& comm_split, const std::vector<std::vector<int_t>>& COMM_SPLIT, int_t n, int_t N, bool pos);
+    static std::vector<int_t> mapPostively(const std::vector<std::vector<int_t>>& comm_split, const std::vector<std::vector<int_t>>& COMM_SPLIT, bool pos);
 
     static int numOneBitInt(uint32_t x);
 

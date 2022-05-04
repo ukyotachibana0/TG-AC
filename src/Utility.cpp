@@ -339,16 +339,22 @@ std::vector<int_t> Utility::mapNeutrally(int_t n, int_t N) {
 
 std::vector<int_t> Utility::mapPostively(
     const std::vector<std::vector<int_t>>& comm_split, 
-    const std::vector<std::vector<int_t>>& COMM_SPLIT, 
-    int_t n, int_t N, bool pos) {
+    const std::vector<std::vector<int_t>>& COMM_SPLIT, bool pos) {
+    // pre process
+    int_t m = comm_split.size(), n = 0;
+    for (int i = 0; i < m; i++) { n += comm_split[i][pos]; }
+    int_t M = COMM_SPLIT.size(), N = 0;
+    std::vector<int_t> COMM_SPLIT_PSUM(M);
+    for (int i = 0; i < M; i++) {
+        COMM_SPLIT_PSUM[i] = N; 
+        N += COMM_SPLIT[i][pos];
+    }
+
     assert(n < N);
 
     std::vector<int_t> ans(n);
     std::unordered_set<int_t> rec;
-
-    int_t M = COMM_SPLIT.size();
-    std::vector<int_t> COMM_SPLIT_PSUM(M);
-    std::partial_sum(COMM_SPLIT.begin(), COMM_SPLIT.end(), COMM_SPLIT_PSUM.begin());
+    
     // map g to community of G
     std::vector<int_t> W(M);
     for (int_t i = 0; i < M; i++) { W[i] = COMM_SPLIT[i][pos]; }
@@ -362,7 +368,7 @@ std::vector<int_t> Utility::mapPostively(
         int_t i_sub = i - comm_split_psum;    // i' sub-index in the community it belongs to
         int_t I_SUB = (i_sub / (comm_split[curr_comm][pos] * 1.0)) * COMM_SPLIT[COMM_belong[i]][pos];
         int_t I = I_SUB + COMM_SPLIT_PSUM[COMM_belong[i]];
-        int step = 1;
+        int_t step = 1;
         while (rec.count(I)) {
             if (I >= N - 1) step = -1;
             if (I <= 0) step = 1;
