@@ -3,10 +3,11 @@
  * Utility functions
  */
 #pragma once
+#include <assert.h>
 #include <vector>
 #include <string>
+#include <unordered_set>
 #include <unordered_map>
-// #include <algorithm>
 #include "types.hpp"
 
 namespace gl {
@@ -38,6 +39,10 @@ public:
     static std::vector<std::vector<int_t>> compleWindow(const std::vector<std::vector<int_t>>& window, int_t e_mit, int_t e_mat);
 
     static std::vector<std::unordered_map<int_t, double>> idenOlAnchorComm(int_t n);
+
+    static std::vector<int_t> mapNeutrally(int_t n, int_t N);
+
+    static std::vector<int_t> mapPostively(const std::vector<std::vector<int_t>>& comm_split, const std::vector<std::vector<int_t>>& COMM_SPLIT, int_t n, int_t N, bool pos);
 
     static int numOneBitInt(uint32_t x);
 

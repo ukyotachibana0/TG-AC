@@ -91,7 +91,7 @@ const static std::string json_comm_window_size = "win_size";
 // embedded
 const static std::string json_embd = "embedded";
 const static std::string json_embd_type = "type";
-const static std::string json_embd_map_random = "random";
+const static std::string json_embd_map_neutral = "neutral";
 const static std::string json_embd_map_positive = "positive";
 const static std::string json_embd_srce_amount = "n_source";
 const static std::string json_embd_trgt_amount = "n_target";

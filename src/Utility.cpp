@@ -52,7 +52,7 @@ std::vector<int_t> Utility::splitDegree(const std::vector<std::vector<int_t>>& c
     std::vector<int_t> w(n);
     for (int i = 0; i < n; i++) { w[i] = comm_split[i][pos]; }
     Random rand;
-    return rand.nextInts(w, c);
+    return rand.nextInts(w, c, false);
 }
 
 std::vector<int_t> Utility::splitScalar(int_t n, int_t k, double lambda) {
@@ -320,6 +320,60 @@ std::vector<std::unordered_map<int_t, double>> Utility::idenOlAnchorComm(int_t n
     return ans;
 }
 
+std::vector<int_t> Utility::mapNeutrally(int_t n, int_t N) {
+    assert(n < N);
+
+    std::vector<int_t> ans(n);
+    std::unordered_set<int_t> rec;
+    Random rand;
+    for (int i = 0; i < n; i++) {
+        int_t I = 0;
+        do { I = rand.nextInt(N - 1); } while (rec.count(I));
+        
+        ans[i] = I;
+        rec.insert(I);
+    }
+
+    return ans;
+}
+
+std::vector<int_t> Utility::mapPostively(
+    const std::vector<std::vector<int_t>>& comm_split, 
+    const std::vector<std::vector<int_t>>& COMM_SPLIT, 
+    int_t n, int_t N, bool pos) {
+    assert(n < N);
+
+    std::vector<int_t> ans(n);
+    std::unordered_set<int_t> rec;
+
+    int_t M = COMM_SPLIT.size();
+    std::vector<int_t> COMM_SPLIT_PSUM(M);
+    std::partial_sum(COMM_SPLIT.begin(), COMM_SPLIT.end(), COMM_SPLIT_PSUM.begin());
+    // map g to community of G
+    std::vector<int_t> W(M);
+    for (int_t i = 0; i < M; i++) { W[i] = COMM_SPLIT[i][pos]; }
+    Random rand;
+    auto COMM_belong = rand.nextInts(W, n, true);
+
+    // map g to G
+    int_t curr_comm = 0, comm_split_psum = 0;
+    for (int_t i = 0; i < n; i++) {
+        if (i - comm_split_psum >= comm_split[curr_comm][pos]) { comm_split_psum += comm_split[curr_comm++][pos]; }
+        int_t i_sub = i - comm_split_psum;    // i' sub-index in the community it belongs to
+        int_t I_SUB = (i_sub / (comm_split[curr_comm][pos] * 1.0)) * COMM_SPLIT[COMM_belong[i]][pos];
+        int_t I = I_SUB + COMM_SPLIT_PSUM[COMM_belong[i]];
+        int step = 1;
+        while (rec.count(I)) {
+            if (I >= N - 1) step = -1;
+            if (I <= 0) step = 1;
+            I += step;
+        }
+        ans[i] = I;
+        rec.insert(I);
+    }
+
+    return ans;
+}
 
 int Utility::numOneBitInt(uint32_t x) {
     int ans = 0;
