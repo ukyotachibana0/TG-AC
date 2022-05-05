@@ -47,7 +47,7 @@ public:
         nextFile();
     }
 
-    Store(std::string& filename, EnumStoreFormat _format,  int _buffer_size=1024*1024*32) {
+    Store(std::string& filename, EnumStoreFormat _format, int _buffer_size=1024*1024*32) {
         bw = bw_csroff = nullptr;
 
         base_filename = filename;

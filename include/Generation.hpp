@@ -12,6 +12,29 @@
 namespace gl {
 namespace fastsgg {
 
+typedef struct _generate_embedded {
+    std::string basename;
+    std::string type;
+    int_t s_nodes;
+    int_t t_nodes;
+    int_t n_edges;
+
+    std::string outd_type;
+    std::unordered_map<std::string, double> out_params;
+    std::string ind_type;
+    std::unordered_map<std::string, double> in_params;
+
+    std::string comm_type;
+    std::unordered_map<std::string, double> comm_params;
+    std::vector<std::vector<int_t>> commSplit;
+
+    std::string temp_type;
+    std::unordered_map<std::string, double> temp_params;
+
+    std::vector<std::vector<int_t>> windSplit;
+    std::vector<std::unordered_map<int_t, double>> olAnchorComm;
+} St_EmbeddedGeneration;
+
 typedef struct _generate_edge {
     std::string e_label;
     // node type
@@ -25,7 +48,6 @@ typedef struct _generate_edge {
     int_t s_nodes;
     int_t t_nodes;
     int_t n_edges;
-    std::string filename;
     std::string basename;
     // temporal
     bool b_temporal;
@@ -40,11 +62,7 @@ typedef struct _generate_edge {
     std::vector<std::unordered_map<int_t, double>> olAnchorComm;
         // for embedded anchor community
     bool b_embedded;
-    std::string embd_temp_type;
-    std::unordered_map<std::string, double> embd_comm_params;
-    std::unordered_map<std::string, double> embd_temp_params;
-    std::vector<std::vector<int_t>> embdWindSplit;
-    std::vector<std::unordered_map<int_t, double>> embdOlAnchorComm;
+    St_EmbeddedGeneration st_embd;
     // overlap
     bool b_overlap;
     double dv_overlap;
@@ -116,7 +134,7 @@ public:
 
     void temporalSocialGraph(St_EdgeGeneration& st_edge);   // anchor communities
 
-    void embeddedGraph(St_EdgeGeneration& st_edge); // embedded anchor communities
+    void embeddedGraph(St_EmbeddedGeneration & st_embd);    // embedded anchor communities
 
     Distribution* getDist(int_t mid, int_t mxd, int_t n, int_t m,
         std::unordered_map<std::string, double>& params,
@@ -136,6 +154,10 @@ public:
 
     bool my_rename(std::string& src_name, std::string& tgt_name);
 
+private:
+    static bool check_temporal(JSON::json& temp, std::string info);
+
+    static bool check_community(JSON::json& comm, std::string info, bool required);
 }; //! class Generation
 
 } //! namespace fastsgg
