@@ -485,14 +485,15 @@ void Generation::generate_plan() {
 
             /* out-degree distribution */
             if (embd.find(schema::json_out_dist) == embd.end()) {
-                // use G's community configuration
+                // use G's distribution configuration
                 st_embd.outd_type = st_one_edge.outd_type;
                 embd_out_params = out_params;
             } else {
                 auto& embd_dist = embd[schema::json_embd_out_dist];
                 
-                // use g's community configuration
+                // use g's distribution configuration (prefer g to G)
                 st_embd.outd_type = embd_dist[schema::json_dist_type];
+
                 embd_out_params[schema::json_dist_min_degree] = embd_dist[schema::json_dist_min_degree];
                 embd_out_params[schema::json_dist_max_degree] = embd_dist[schema::json_dist_max_degree];
                 if (embd_dist.find(schema::json_dist_PL_lambda) != embd_dist.end())
@@ -505,13 +506,13 @@ void Generation::generate_plan() {
 
             /* in-degree distribution */
             if (embd.find(schema::json_in_dist) == embd.end()) {
-                // use G's community configuration
+                // use G's distribution configuration
                 st_embd.ind_type = st_one_edge.ind_type;
                 embd_in_params = in_params;
             } else {
                 auto& embd_dist = embd[schema::json_embd_in_dist];
 
-                // use g's community configuration
+                // use g's distribution configuration
                 st_embd.outd_type = embd_dist[schema::json_dist_type];
                 embd_in_params[schema::json_dist_min_degree] = embd_dist[schema::json_dist_min_degree];
                 embd_in_params[schema::json_dist_max_degree] = embd_dist[schema::json_dist_max_degree];
@@ -557,13 +558,13 @@ void Generation::generate_plan() {
                 if(!st_one_edge.b_temporal)
                     goto ending;
 
-                // use G's community configuration
+                // use G's temporal configuration
                 st_embd.temp_type = st_one_edge.temp_type;
                 embd_temp_params = temp_params;
             } else {
                 auto& embd_temp = embd[schema::json_embd_temp];
 
-                // use g's community configuration
+                // use g's temporal configuration
                 st_embd.temp_type = embd_temp[schema::json_temp_type];
 
                 embd_temp_params[schema::json_temp_min_timestamp] = embd_temp[schema::json_temp_min_timestamp];
@@ -2339,6 +2340,7 @@ bool Generation::check_json_temp(JSON::json& temp, std::string info) {
         std::cerr << info << " (object)." << std::endl;
         return false;
     }
+    // type
     if (temp.find(schema::json_temp_type) == temp.end()) {
         std::cerr << info << " (type)." << std::endl;
         return false;
@@ -2348,20 +2350,22 @@ bool Generation::check_json_temp(JSON::json& temp, std::string info) {
         return false;
     }
     std::string temp_type = temp[schema::json_temp_type];
+    // min_ts
     if (temp.find(schema::json_temp_min_timestamp) == temp.end()) {
-        std::cerr << info << " (min-ts)." << std::endl;
+        std::cerr << info << " (min_ts)." << std::endl;
         return false;
     }
     if (!temp[schema::json_temp_min_timestamp].is_number()) {
-        std::cerr << info << " (min-ts: number)." << std::endl;
+        std::cerr << info << " (min_ts: number)." << std::endl;
         return false;
     }
+    // max_ts
     if (temp.find(schema::json_temp_max_timestamp) == temp.end()) {
-        std::cerr << info << " (max-ts)." << std::endl;
+        std::cerr << info << " (max_ts)." << std::endl;
         return false;
     }
     if (!temp[schema::json_temp_max_timestamp].is_number()) {
-        std::cerr << info << " (max-ts: number)." << std::endl;
+        std::cerr << info << " (max_ts: number)." << std::endl;
         return false;
     }
     if (temp_type == schema::json_temp_PowerLaw) {
@@ -2373,8 +2377,7 @@ bool Generation::check_json_temp(JSON::json& temp, std::string info) {
             std::cerr << info << " (PowerLaw lambda: number)." << std::endl;
             return false;
         }
-    }
-    else if (temp_type == schema::json_temp_Normal || temp_type == schema::json_temp_LogNormal) {
+    } else if (temp_type == schema::json_temp_Normal || temp_type == schema::json_temp_LogNormal) {
         // mu (optional)
         if (temp.find(schema::json_dist_Nor_mu) != temp.end() && !temp[schema::json_dist_Nor_mu].is_number()) {
             std::cerr << info << " ([Log]Normal mu: number)." << std::endl;
@@ -2389,11 +2392,9 @@ bool Generation::check_json_temp(JSON::json& temp, std::string info) {
             std::cerr << info << " ([Log]Normal sigma: number)." << std::endl;
             return false;
         }
-    }
-    else if (temp_type == schema::json_temp_Uniform) {
+    } else if (temp_type == schema::json_temp_Uniform) {
         //
-    }
-    else {
+    } else {
         std::cerr << info << " (unknown distribution or not implement: " << temp_type << ")." << std::endl;
         return false;
     }
