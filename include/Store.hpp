@@ -18,11 +18,9 @@ private:
     BufferWriter *bw;
     BufferWriter *bw_csroff;
     
-    std::string base_filename;  // base filename
-    EnumStoreFormat format;
+    std::string filename;  // base filename
+    std::string format;
     int buffer_size;
-
-    std::string csf_off_suffix; // CSROFF
 
     int_t file_lines_upper;     // #Lines upper in a file
     int_t current_file_lines;   // #Lines in this file
@@ -33,11 +31,9 @@ public:
     Store() {
         bw = bw_csroff = nullptr;
 
-        base_filename = "part_";
-        format = EnumStoreFormat::TSV;
+        filename = "part_";
+        format = schema::json_format_TSV;
         buffer_size = 1024*1024*32;
-
-        csf_off_suffix = "_CSROFF_";
 
         file_lines_upper = 1000000;
         current_file_lines = 0;
@@ -47,14 +43,12 @@ public:
         nextFile();
     }
 
-    Store(std::string& filename, EnumStoreFormat _format, int _buffer_size=1024*1024*32) {
+    Store(std::string& _filename, std::string& _format, int _buffer_size=1024*1024*32) {
         bw = bw_csroff = nullptr;
 
-        base_filename = filename;
+        filename = _filename;
         format = _format;
         buffer_size = _buffer_size;
-
-        csf_off_suffix = "_CSROFF_";
 
         file_lines_upper = 1000000;
         current_file_lines = 0;
@@ -67,11 +61,11 @@ public:
     void nextFile() {
         close();
         std::string file_no = Utility::strSeqNumber(current_file_no);
-        std::string fn = base_filename + file_no;
+        std::string fn = filename + "_" + file_no + "." + format;
         bw = new BufferWriter(fn.c_str(), buffer_size);
-        if (format == EnumStoreFormat::CSR) {
+        if (format == schema::json_format_CSR) {
             offset = 0;
-            std::string csr_off_filename = base_filename + csf_off_suffix + file_no;
+            std::string csr_off_filename = filename + "_" + file_no + "." + schema::json_format_CSROFF;
             bw_csroff = new BufferWriter(csr_off_filename.c_str(), buffer_size);
         }
         // update
@@ -127,7 +121,7 @@ public:
     void writeLine(int_t i, std::unordered_set<int_t>& adj) {
         if (adj.empty())
             return;
-        if (format == EnumStoreFormat::TSV) { // TSV
+        if (format == schema::json_format_TSV) { // TSV
             for (auto n : adj) {
                 bw->write(i);
                 bw->tab();
@@ -139,7 +133,7 @@ public:
                     nextFile();
                 }
             }
-        } else if (format == EnumStoreFormat::ADJ) { // ADJ
+        } else if (format == schema::json_format_ADJ) { // ADJ
             bw->write(i);
             for (auto n : adj) {
                 bw->space();
@@ -152,6 +146,8 @@ public:
                 nextFile();
             }
         } else { //  CSR
+            bw->write(i);
+            bw->tab();
             for (auto n : adj) {
                 bw->write(n);
                 bw->tab();
@@ -166,19 +162,49 @@ public:
     void writeLine(int_t i, std::set<std::pair<int_t, int_t>>& adj) {
         if (adj.empty()) return;
 
-        int_t n = adj.size();
-        // TODO: consider different formats
-        for (auto p : adj) {    // TSV
+        // consider different formats
+        if (format == schema::json_format_TSV) {           // TSV
+            for (auto n : adj) {
+                bw->write(i);
+                bw->tab();
+                bw->write(n.first);
+                bw->tab();
+                bw->write(n.second);
+
+                bw->newline();
+                // update #Lines
+                current_file_lines++;
+                if (current_file_lines == file_lines_upper) {
+                    nextFile();
+                }
+            }
+        } else if (format == schema::json_format_ADJ) {    // ADJ
             bw->write(i);
-            bw->tab();
-            bw->write(p.first);
-            bw->tab();
-            bw->write(p.second);
+            for (auto n : adj) {
+                bw->space();
+                bw->write(n.first);
+                bw->space();
+                bw->write(n.second);
+            }
             bw->newline();
-            current_file_lines ++;
+            // update #Lines
+            current_file_lines++;
             if (current_file_lines == file_lines_upper) {
                 nextFile();
             }
+        } else {                                        //  CSR
+            bw->write(i);
+            bw->tab();
+            for (auto n : adj) {
+                bw->write(n.first);
+                bw->tab();
+                bw->write(n.second);
+                bw->tab();
+            }
+            // offset
+            bw_csroff->write(offset);
+            bw_csroff->tab();
+            offset += adj.size();
         }
     }
 
