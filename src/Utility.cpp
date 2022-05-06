@@ -337,6 +337,47 @@ std::vector<int_t> Utility::mapNeutrally(int_t n, int_t N) {
     return ans;
 }
 
+std::vector<int_t> Utility::mapPostively(const std::vector<std::vector<int_t>>& comm_split, int_t N, bool pos) {
+    // pre process
+    int_t m = comm_split.size(), n = 0;
+    for (int i = 0; i < m; i++) { n += comm_split[i][pos]; }
+
+    assert(n < N);
+
+    std::vector<int_t> ans(n);
+    std::unordered_set<int_t> rec;
+    Random rand;
+    double theta = 1.0; // parameter of expotential distribution
+
+    // map g to G
+    int_t curr_comm = 0, comm_split_psum = 0;
+    for (int_t i = 0; i < n; i++) {
+        if (i - comm_split_psum >= comm_split[curr_comm][pos]) { 
+            comm_split_psum += comm_split[curr_comm++][pos]; 
+            theta = 1.0 + comm_split[curr_comm][pos] / (1.0 * N);
+        }
+        int_t i_sub = i - comm_split_psum;              // i' sub-index in the community it belongs to
+        int_t I_BIAS = rand.nextIntExp(theta);          // I_BIAS: follows expotential distribution
+        int_t I_BIAS_DIR = rand.nextBool() ? 1 : -1;    // I_BIAS_DIR: follows uniform distribution
+        int_t I = (i_sub / (comm_split[curr_comm][pos] * 1.0)) * N + I_BIAS * I_BIAS_DIR;
+        if (I >= N - 1) I = N - 1;
+        if (I <= 0) I = 0;
+
+        int_t step = 1;
+        while (rec.count(I)) {
+            if (I >= N - 1) step = -1;
+            if (I <= 0) step = 1;
+            I += step;
+        }
+
+        ans[i] = I;
+        rec.insert(I);
+    }
+
+    return ans;
+}
+
+
 std::vector<int_t> Utility::mapPostively(
     const std::vector<std::vector<int_t>>& comm_split, 
     const std::vector<std::vector<int_t>>& COMM_SPLIT, bool pos) {
@@ -346,7 +387,7 @@ std::vector<int_t> Utility::mapPostively(
     int_t M = COMM_SPLIT.size(), N = 0;
     std::vector<int_t> COMM_SPLIT_PSUM(M);
     for (int i = 0; i < M; i++) {
-        COMM_SPLIT_PSUM[i] = N; 
+        COMM_SPLIT_PSUM[i] = N;
         N += COMM_SPLIT[i][pos];
     }
 
@@ -365,8 +406,16 @@ std::vector<int_t> Utility::mapPostively(
     int_t curr_comm = 0, comm_split_psum = 0;
     for (int_t i = 0; i < n; i++) {
         if (i - comm_split_psum >= comm_split[curr_comm][pos]) { comm_split_psum += comm_split[curr_comm++][pos]; }
-        int_t i_sub = i - comm_split_psum;    // i' sub-index in the community it belongs to
-        int_t I_SUB = (i_sub / (comm_split[curr_comm][pos] * 1.0)) * COMM_SPLIT[COMM_belong[i]][pos];
+        // i_sub: i' sub-index in the community it belongs to
+        int_t i_sub = i - comm_split_psum;
+        // I_SUB: I' sub-index in the community it belongs to
+        double theta = 1.0 + comm_split[curr_comm][pos] / (1.0 * COMM_SPLIT[COMM_belong[i]][pos]);
+        int_t I_BIAS = rand.nextIntExp(theta);          // I_BIAS: follows expotential distribution
+        int_t I_BIAS_DIR = rand.nextBool() ? 1 : -1;    // I_BIAS_DIR: follows uniform distribution
+        int_t I_SUB = i_sub * (COMM_SPLIT[COMM_belong[i]][pos] / (comm_split[curr_comm][pos] * 1.0)) + I_BIAS * I_BIAS_DIR;
+        if (I_SUB >= COMM_SPLIT[COMM_belong[i]][pos] - 1) I_SUB = COMM_SPLIT[COMM_belong[i]][pos] - 1;
+        if (I_SUB <= 0) I_SUB = 0;
+
         int_t I = I_SUB + COMM_SPLIT_PSUM[COMM_belong[i]];
         int_t step = 1;
         while (rec.count(I)) {
@@ -374,6 +423,7 @@ std::vector<int_t> Utility::mapPostively(
             if (I <= 0) step = 1;
             I += step;
         }
+
         ans[i] = I;
         rec.insert(I);
     }

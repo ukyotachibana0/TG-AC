@@ -188,246 +188,118 @@ bool Generation::check_json() {
             ans = false;
             continue;
         }
+        // out distribution
+        std::string out_info = "[Generation::check_json] Error: JSON['" + schema::json_edge + "'][i]['" + schema::json_in_dist + "']";
+        if (one_edge.find(schema::json_out_dist) == one_edge.end()) {
+            std::cerr << out_info << "(lack)." << std::endl;
+            ans = false;
+            continue;
+        }
+        auto& out_dist = one_edge[schema::json_out_dist];
+        if (!check_json_dist(out_dist, out_info)) { ans = false; continue; }
+        // in distribution
+        std::string in_info = "[Generation::check_json] Error: JSON['" + schema::json_edge + "'][i]['" + schema::json_in_dist + "']";
+        if (one_edge.find(schema::json_in_dist) == one_edge.end()) {
+            std::cerr << in_info << "(lack)." << std::endl;
+            ans = false;
+            continue;
+        }
+        auto& in_dist = one_edge[schema::json_in_dist];
+        if (!check_json_dist(in_dist, in_info)) { ans = false; continue; }
         // temporal (optional)
         if (one_edge.find(schema::json_temp) != one_edge.end()) {
             auto& temp = one_edge[schema::json_temp];
-            std::string baseinfo = "[Generation::check_json] Error: JSON['" + schema::json_edge + "'][i]['" + schema::json_temp + "']";
-            if (!check_temporal(temp, baseinfo)) { ans = false; continue; }
-        }
-        // out distribution
-        if (one_edge.find(schema::json_out_dist) == one_edge.end()) {
-            std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "']." << std::endl;
-            ans = false;
-            continue;
-        }
-        if (!one_edge[schema::json_out_dist].is_object()) {
-            std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] (Object)." << std::endl;
-            ans = false;
-            continue;
-        }
-        // Distribution
-        auto& dist = one_edge[schema::json_out_dist];
-        if (dist.find(schema::json_dist_type) == dist.end()) {
-            std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "']." << std::endl;
-            ans = false;
-            continue;
-        }
-        if (!dist[schema::json_dist_type].is_string()) {
-            std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] (string)." << std::endl;
-            ans = false;
-            continue;
-        }
-        std::string dist_type = dist[schema::json_dist_type];
-        if (dist.find(schema::json_dist_min_degree) == dist.end()) {
-            std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "']." << std::endl;
-            ans = false;
-            continue;
-        }
-        if (!dist[schema::json_dist_min_degree].is_number()) {
-            std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] (number)." << std::endl;
-            ans = false;
-            continue;
-        }
-        if (dist.find(schema::json_dist_max_degree) == dist.end()) {
-            std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "']." << std::endl;
-            ans = false;
-            continue;
-        }
-        if (!dist[schema::json_dist_max_degree].is_number()) {
-            std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] (number)." << std::endl;
-            ans = false;
-            continue;
-        }
-        if (dist_type == schema::json_dist_PowerLaw) {
-            if (dist.find(schema::json_dist_PL_lambda) == dist.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] (PowerLaw lambda)." << std::endl;
-                ans = false;
-                continue;
-            }
-            if (!dist[schema::json_dist_PL_lambda].is_number()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] (PowerLaw lambda number)." << std::endl;
-                ans = false;
-            }
-        } else if (dist_type == schema::json_dist_Normal ||
-                   dist_type == schema::json_dist_LogNormal) {
-            if (dist.find(schema::json_dist_Nor_mu) == dist.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] ([Log]Normal mu)." << std::endl;
-                ans = false;
-                continue;
-            }
-            if (!dist[schema::json_dist_Nor_mu].is_number()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] ([Log]Normal mu number)." << std::endl;
-                ans = false;
-                continue;
-            }
-            if (dist.find(schema::json_dist_Nor_sigma) == dist.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] ([Log]Normal sigma)." << std::endl;
-                ans = false;
-                continue;
-            }
-            if (!dist[schema::json_dist_Nor_sigma].is_number()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] ([Log]Normal sigma number)." << std::endl;
-                ans = false;
-            }
-        } else if (dist_type == schema::json_dist_Uniform) {
-            //
-        } else {
-            std::cerr << "[Generation::check_json] Unknown Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_out_dist << "'] (Unknown Distribution or not implement: " << dist_type << ")." << std::endl;
-            ans = false;
-        }
-        // in distribution (optional)
-        if (one_edge.find(schema::json_in_dist) != one_edge.end()) {
-            if (!one_edge[schema::json_in_dist].is_object()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] (In-distribution object)." << std::endl;
-                ans = false;
-                continue;
-            }
-            // Distribution
-            auto& dist = one_edge[schema::json_in_dist];
-            if (dist.find(schema::json_dist_type) == dist.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "']." << std::endl;
-                ans = false;
-                continue;
-            }
-            if (!dist[schema::json_dist_type].is_string()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] (Distribution type: string)." << std::endl;
-                ans = false;
-                continue;
-            }
-            std::string dist_type = dist[schema::json_dist_type];
-            if (dist.find(schema::json_dist_min_degree) == dist.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "']." << std::endl;
-                ans = false;
-                continue;
-            }
-            if (!dist[schema::json_dist_min_degree].is_number()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] (number)." << std::endl;
-                ans = false;
-                continue;
-            }
-            if (dist.find(schema::json_dist_max_degree) == dist.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "']." << std::endl;
-                ans = false;
-                continue;
-            }
-            if (!dist[schema::json_dist_max_degree].is_number()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] (number)." << std::endl;
-                ans = false;
-                continue;
-            }
-            if (dist_type == schema::json_dist_PowerLaw) {
-                if (dist.find(schema::json_dist_PL_lambda) == dist.end()) {
-                    std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] (PowerLaw lambda)." << std::endl;
-                    ans = false;
-                    continue;
-                }
-                if (!dist[schema::json_dist_PL_lambda].is_number()) {
-                    std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] (PowerLaw lambda number)." << std::endl;
-                    ans = false;
-                }
-            } else if (dist_type == schema::json_dist_Normal ||
-                       dist_type == schema::json_dist_LogNormal) {
-                if (dist.find(schema::json_dist_Nor_mu) == dist.end()) {
-                    std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] ([Log]Normal mu)." << std::endl;
-                    ans = false;
-                    continue;
-                }
-                if (!dist[schema::json_dist_Nor_mu].is_number()) {
-                    std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] ([Log]Normal mu number)." << std::endl;
-                    ans = false;
-                    continue;
-                }
-                if (dist.find(schema::json_dist_Nor_sigma) == dist.end()) {
-                    std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] ([Log]Normal sigma)." << std::endl;
-                    ans = false;
-                    continue;
-                }
-                if (!dist[schema::json_dist_Nor_sigma].is_number()) {
-                    std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] ([Log]Normal sigma number)." << std::endl;
-                    ans = false;
-                }
-            } else if (dist_type == schema::json_dist_Uniform) {
-                //
-            } else {
-                std::cerr << "[Generation::check_json] Unknown Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_in_dist << "'] (Unknown Distribution or not implement: " << dist_type << ")." << std::endl;
-                ans = false;
-            }
+            std::string info = "[Generation::check_json] Error: JSON['" + schema::json_edge + "'][i]['" + schema::json_temp + "']";
+            if (!check_json_temp(temp, info)) { ans = false; continue; }
         }
         // community (optional)
         if (one_edge.find(schema::json_comm) != one_edge.end()) {
             auto& comm = one_edge[schema::json_comm];
-            std::string baseinfo = "[Generation::check_json] Error: JSON['" + schema::json_edge + "'][i]['" + schema::json_comm + "']";
-            if (!check_community(comm, baseinfo, true)) { ans = false; continue; }
+            std::string info = "[Generation::check_json] Error: JSON['" + schema::json_edge + "'][i]['" + schema::json_comm + "']";
+            if (!check_json_comm(comm, info, true)) { ans = false; continue; }
         }
         // embedded (optional)
         if (one_edge.find(schema::json_embd) != one_edge.end()) {
+            std::string embd_info = "[Generation::check_json] Error: JSON['" + schema::json_edge + "'][i]['" + schema::json_embd + "']";
             if (!one_edge[schema::json_embd].is_object()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (object)." << std::endl;
+                std::cerr << embd_info << " (object)." << std::endl;
                 ans = false;
                 continue;
             }
             auto& embd = one_edge[schema::json_embd];
             // type
             if (embd.find(schema::json_embd_type) == embd.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (type)." << std::endl;
+                std::cerr << embd_info << "'(type)." << std::endl;
                 ans = false;
                 continue;
             }
             if (!embd[schema::json_embd_type].is_string()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (type: string)." << std::endl;
+                std::cerr << embd_info << "'(type: string)." << std::endl;
                 ans = false;
                 continue;
             }
             std::string embd_type = embd[schema::json_embd_type];
             if (embd_type != schema::json_embd_map_neutral && embd_type != schema::json_embd_map_positive) {
-                std::cerr << "[Generation::check_json] Unknown Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (Unknown type of embedding: " << embd_type << ")." << std::endl;
+                std::cerr << embd_info << " (Unknown type of embedding: " << embd_type << ")." << std::endl;
                 ans = false;
                 continue;
             }
             // source amount
             if (embd.find(schema::json_embd_srce_amount) == embd.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (n source)." << std::endl;
+                std::cerr << embd_info << " (n_source)." << std::endl;
                 ans = false;
                 continue;
             }
             if (!embd[schema::json_embd_srce_amount].is_number()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (n source: number)." << std::endl;
+                std::cerr << embd_info << " (n_source: number)." << std::endl;
                 ans = false;
                 continue;
             }
             // target amount
             if (embd.find(schema::json_embd_trgt_amount) == embd.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (n target)." << std::endl;
+                std::cerr << embd_info << " (n_target)." << std::endl;
                 ans = false;
                 continue;
             }
             if (!embd[schema::json_embd_trgt_amount].is_number()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (n target: number)." << std::endl;
+                std::cerr << embd_info << " (n_target: number)." << std::endl;
                 ans = false;
                 continue;
             }
             // edge amount
             if (embd.find(schema::json_embd_edge_amount) == embd.end()) {
-                std::cerr << "[Generation::check_json] Lack Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (n edge)." << std::endl;
+                std::cerr << embd_info << " (n_edge)." << std::endl;
                 ans = false;
                 continue;
             }
             if (!embd[schema::json_embd_edge_amount].is_number()) {
-                std::cerr << "[Generation::check_json] Type Error: JSON['" << schema::json_edge << "'][i]['" << schema::json_embd << "'] (n edge: number)." << std::endl;
+                std::cerr << embd_info << " (n_edge: number)." << std::endl;
                 ans = false;
                 continue;
+            }
+            // out distribution (optional)
+            if (embd.find(schema::json_out_dist) != embd.end()) {
+                auto& out_dist = embd[schema::json_embd_out_dist];
+                std::string out_info = embd_info + "['" + schema::json_embd_out_dist + "']";
+                if (!check_json_dist(out_dist, out_info)) { ans = false; continue; }
+            }
+            // in distribution (optional)
+            if (embd.find(schema::json_embd_in_dist) != embd.end()) {
+                auto& in_dist = embd[schema::json_embd_in_dist];
+                std::string in_info = embd_info + "['" + schema::json_embd_in_dist + "']";
+                if (!check_json_dist(in_dist, embd_info)) { ans = false; continue; }
             }
             // community (optional)
             if (embd.find(schema::json_embd_comm) != embd.end()) {
                 auto& embd_comm = embd[schema::json_embd_comm];
-                std::string baseinfo= "[Generation::check_json] Error: JSON['" + schema::json_edge + "'][i]['" + schema::json_embd + "']['" + schema::json_embd_comm + "']";
-                if(!check_community(embd_comm, baseinfo, false)) { ans = false; continue; }
+                std::string comm_info = embd_info + "['" + schema::json_embd_comm + "']";
+                if(!check_json_comm(embd_comm, comm_info, false)) { ans = false; continue; }
             }
             // temporal (optional)
             if (embd.find(schema::json_embd_temp) != embd.end()) {
                 auto& embd_temp = embd[schema::json_embd_temp];
-                std::string baseinfo = "[Generation::check_json] Error: JSON['" + schema::json_edge + "'][i]['" + schema::json_embd + "']['" + schema::json_embd_temp + "']";
-                if (!check_temporal(embd_temp, baseinfo)) { ans = false; continue; }
+                std::string temp_info = embd_info + "['" + schema::json_embd_temp + "']";
+                if (!check_json_temp(embd_temp, temp_info)) { ans = false; continue; }
             }
         }
     }
@@ -472,16 +344,8 @@ void Generation::generate_plan() {
     if (json_obj.find(schema::json_store_format) != json_obj.end()) {
         g_format = json_obj[schema::json_store_format];
     }
-    if (g_format == schema::json_format_TSV) {
-        g_enum_format = EnumStoreFormat::TSV;
-    } else if (g_format == schema::json_format_ADJ) {
-        g_enum_format = EnumStoreFormat::ADJ;
-    } else if (g_format == schema::json_format_CSR) {
-        g_enum_format = EnumStoreFormat::CSR;
-    } else {
+    if (g_format != schema::json_format_TSV && g_format != schema::json_format_ADJ && g_format != schema::json_format_CSR)
         g_format = schema::json_format_TSV;
-        g_enum_format = EnumStoreFormat::TSV;
-    }
     // edge schema
     auto& edge_schema = json_obj[schema::json_edge];
     for (auto& one_edge : edge_schema) {
@@ -509,28 +373,15 @@ void Generation::generate_plan() {
         st_one_edge.t_nodes = t_nodes;
         st_one_edge.basename = basename;
 
-        // Temporal
-        st_one_edge.b_temporal = false;
-        if (one_edge.find(schema::json_temp) != one_edge.end()) {
-            st_one_edge.b_temporal = true;
-            auto& one_temporal = one_edge[schema::json_temp];
-            st_one_edge.temp_type = one_temporal[schema::json_temp_type];
-            std::unordered_map<std::string, double>& temp_params = st_one_edge.temp_params;
-            temp_params[schema::json_temp_min_timestamp] = one_temporal[schema::json_temp_min_timestamp];
-            temp_params[schema::json_temp_max_timestamp] = one_temporal[schema::json_temp_max_timestamp];
-            if (one_temporal.find(schema::json_temp_PL_lambda) != one_temporal.end())
-                temp_params[schema::json_temp_PL_lambda] = one_temporal[schema::json_temp_PL_lambda];
-            if (one_temporal.find(schema::json_temp_Nor_mu) != one_temporal.end())
-                temp_params[schema::json_temp_Nor_mu] = one_temporal[schema::json_temp_Nor_mu];
-            if (one_temporal.find(schema::json_temp_Nor_sigma) != one_temporal.end())
-                temp_params[schema::json_temp_Nor_sigma] = one_temporal[schema::json_temp_Nor_sigma];
-        }
+        auto& out_params = st_one_edge.out_params;
+        auto& in_params = st_one_edge.in_params;
+        auto& comm_params = st_one_edge.comm_params;
+        auto& temp_params = st_one_edge.temp_params;
 
         // Out-Degree Distribution
         auto& out_dist = one_edge[schema::json_out_dist];
         // std::string o_dist_type = out_dist[schema::json_dist_type];
         st_one_edge.outd_type = out_dist[schema::json_dist_type];
-        std::unordered_map<std::string, double>& out_params = st_one_edge.out_params;
         out_params[schema::json_dist_min_degree] = out_dist[schema::json_dist_min_degree];
         out_params[schema::json_dist_max_degree] = out_dist[schema::json_dist_max_degree];
         if (out_dist.find(schema::json_dist_PL_lambda) != out_dist.end())
@@ -543,7 +394,6 @@ void Generation::generate_plan() {
         // In-Degree Distribution
         auto& in_dist = one_edge[schema::json_in_dist];
         st_one_edge.ind_type = in_dist[schema::json_dist_type];
-        std::unordered_map<std::string, double>& in_params = st_one_edge.in_params;
         in_params[schema::json_dist_min_degree] = in_dist[schema::json_dist_min_degree];
         in_params[schema::json_dist_max_degree] = in_dist[schema::json_dist_max_degree];
         if (in_dist.find(schema::json_dist_PL_lambda) != in_dist.end())
@@ -553,12 +403,26 @@ void Generation::generate_plan() {
         if (in_dist.find(schema::json_dist_Nor_sigma) != in_dist.end())
             in_params[schema::json_dist_Nor_sigma] = in_dist[schema::json_dist_Nor_sigma];
 
+        // Temporal
+        st_one_edge.b_temporal = false;
+        if (one_edge.find(schema::json_temp) != one_edge.end()) {
+            st_one_edge.b_temporal = true;
+            auto& one_temporal = one_edge[schema::json_temp];
+            st_one_edge.temp_type = one_temporal[schema::json_temp_type];
+            temp_params[schema::json_temp_min_timestamp] = one_temporal[schema::json_temp_min_timestamp];
+            temp_params[schema::json_temp_max_timestamp] = one_temporal[schema::json_temp_max_timestamp];
+            if (one_temporal.find(schema::json_temp_PL_lambda) != one_temporal.end())
+                temp_params[schema::json_temp_PL_lambda] = one_temporal[schema::json_temp_PL_lambda];
+            if (one_temporal.find(schema::json_temp_Nor_mu) != one_temporal.end())
+                temp_params[schema::json_temp_Nor_mu] = one_temporal[schema::json_temp_Nor_mu];
+            if (one_temporal.find(schema::json_temp_Nor_sigma) != one_temporal.end())
+                temp_params[schema::json_temp_Nor_sigma] = one_temporal[schema::json_temp_Nor_sigma];
+        }
+
         // Community Distribution (optional)
         st_one_edge.b_social = false;
         if (one_edge.find(schema::json_comm) != one_edge.end()) {
-            st_one_edge.b_social = true;
             auto& comm = one_edge[schema::json_comm];
-            std::unordered_map<std::string, double>& comm_params = st_one_edge.comm_params;
             comm_params[schema::json_comm_amount] = comm[schema::json_comm_amount];
             comm_params[schema::json_comm_lambda] = comm[schema::json_comm_lambda];
             comm_params[schema::json_comm_rho] = comm[schema::json_comm_rho];
@@ -576,6 +440,7 @@ void Generation::generate_plan() {
                     comm_params[schema::json_comm_window_size],
                     temp_params[schema::json_temp_min_timestamp],
                     temp_params[schema::json_temp_max_timestamp]);
+                // identify overlap anchor communitiy pairs
                 st_one_edge.olAnchorComm = Utility::idenOlAnchorComm(comm_params[schema::json_comm_amount]);
             }
             // split community
@@ -607,28 +472,66 @@ void Generation::generate_plan() {
             auto& embd = one_edge[schema::json_embd];
             auto& st_embd = st_one_edge.st_embd;
             
-            // basic info
+            /* basic info */
             st_embd.type = embd[schema::json_embd_type];
             st_embd.s_nodes = embd[schema::json_embd_srce_amount];
             st_embd.t_nodes= embd[schema::json_embd_trgt_amount];
             st_embd.n_edges = embd[schema::json_embd_edge_amount];
 
+            auto& embd_in_params = st_embd.in_params;
+            auto& embd_out_params = st_embd.out_params;
             auto& embd_comm_params = st_embd.comm_params;
             auto& embd_temp_params = st_embd.temp_params;
 
+            /* out-degree distribution */
+            if (embd.find(schema::json_out_dist) == embd.end()) {
+                // use G's community configuration
+                st_embd.outd_type = st_one_edge.outd_type;
+                embd_out_params = out_params;
+            } else {
+                auto& embd_dist = embd[schema::json_embd_out_dist];
+                
+                // use g's community configuration
+                st_embd.outd_type = embd_dist[schema::json_dist_type];
+                embd_out_params[schema::json_dist_min_degree] = embd_dist[schema::json_dist_min_degree];
+                embd_out_params[schema::json_dist_max_degree] = embd_dist[schema::json_dist_max_degree];
+                if (embd_dist.find(schema::json_dist_PL_lambda) != embd_dist.end())
+                    embd_out_params[schema::json_dist_PL_lambda] = embd_dist[schema::json_dist_PL_lambda];
+                if (embd_dist.find(schema::json_dist_Nor_mu) != embd_dist.end())
+                    embd_out_params[schema::json_dist_Nor_mu] = embd_dist[schema::json_dist_Nor_mu];
+                if (embd_dist.find(schema::json_dist_Nor_sigma) != embd_dist.end())
+                    embd_out_params[schema::json_dist_Nor_sigma] = embd_dist[schema::json_dist_Nor_sigma];
+            }
+
+            /* in-degree distribution */
+            if (embd.find(schema::json_in_dist) == embd.end()) {
+                // use G's community configuration
+                st_embd.ind_type = st_one_edge.ind_type;
+                embd_in_params = in_params;
+            } else {
+                auto& embd_dist = embd[schema::json_embd_in_dist];
+
+                // use g's community configuration
+                st_embd.outd_type = embd_dist[schema::json_dist_type];
+                embd_in_params[schema::json_dist_min_degree] = embd_dist[schema::json_dist_min_degree];
+                embd_in_params[schema::json_dist_max_degree] = embd_dist[schema::json_dist_max_degree];
+                if (embd_dist.find(schema::json_dist_PL_lambda) != embd_dist.end())
+                    embd_in_params[schema::json_dist_PL_lambda] = embd_dist[schema::json_dist_PL_lambda];
+                if (embd_dist.find(schema::json_dist_Nor_mu) != embd_dist.end())
+                    embd_in_params[schema::json_dist_Nor_mu] = embd_dist[schema::json_dist_Nor_mu];
+                if (embd_dist.find(schema::json_dist_Nor_sigma) != embd_dist.end())
+                    embd_in_params[schema::json_dist_Nor_sigma] = embd_dist[schema::json_dist_Nor_sigma];
+            }
+
             /* community */
-            auto& comm_params = st_one_edge.comm_params;        // G from comm input
             if (embd.find(schema::json_embd_comm) == embd.end()) {
                 if (!st_one_edge.b_social || comm_params.find(schema::json_comm_window_size) == comm_params.end())
                     goto ending;
 
                 // use G's community configuration
-                embd_comm_params[schema::json_comm_amount] = comm_params[schema::json_comm_amount];
-                embd_comm_params[schema::json_comm_lambda] = comm_params[schema::json_comm_lambda];
-                embd_comm_params[schema::json_comm_rho] = comm_params[schema::json_comm_rho];
-                embd_comm_params[schema::json_comm_window_size] = comm_params[schema::json_comm_window_size];
+                embd_comm_params = comm_params;                 
             } else {
-                auto& embd_comm = embd[schema::json_embd_comm]; // g from embd input
+                auto& embd_comm = embd[schema::json_embd_comm];
                 if ((embd_comm.find(schema::json_comm_amount) == embd_comm.end() && comm_params.find(schema::json_comm_amount) == comm_params.end()) ||
                     (embd_comm.find(schema::json_comm_lambda) == embd_comm.end() && comm_params.find(schema::json_comm_lambda) == comm_params.end()) ||
                     (embd_comm.find(schema::json_comm_rho) == embd_comm.end() && comm_params.find(schema::json_comm_rho) == comm_params.end()) ||
@@ -645,8 +548,9 @@ void Generation::generate_plan() {
                 embd_comm_params[schema::json_comm_window_size] = embd_comm.find(schema::json_comm_window_size) == embd_comm.end() ?
                     comm_params[schema::json_comm_window_size] : embd_comm[schema::json_comm_window_size];
             }
-            // todo: split community
-            
+            // split community
+            st_embd.commSplit = Utility::splitCommunity(st_embd.s_nodes, st_embd.t_nodes,
+                embd_comm_params[schema::json_comm_amount], embd_comm_params[schema::json_comm_lambda]);
 
             /* temporal */
             if (embd.find(schema::json_embd_temp) == embd.end()) {
@@ -655,9 +559,9 @@ void Generation::generate_plan() {
 
                 // use G's community configuration
                 st_embd.temp_type = st_one_edge.temp_type;
-                embd_temp_params = st_one_edge.temp_params;     // G from temp input
+                embd_temp_params = temp_params;
             } else {
-                auto& embd_temp = embd[schema::json_embd_temp]; // g from embd input
+                auto& embd_temp = embd[schema::json_embd_temp];
 
                 // use g's community configuration
                 st_embd.temp_type = embd_temp[schema::json_temp_type];
@@ -677,8 +581,25 @@ void Generation::generate_plan() {
                 embd_comm_params[schema::json_comm_window_size],
                 embd_temp_params[schema::json_temp_min_timestamp],
                 embd_temp_params[schema::json_temp_max_timestamp]);
+            // identify overlap anchor communitiy pairs
             st_embd.olAnchorComm = Utility::idenOlAnchorComm(embd_comm_params[schema::json_comm_amount]);
-        
+
+            /* map */
+            st_embd.b_homo = e_source == e_target;
+            if (st_embd.type == schema::json_embd_map_neutral) st_embd.s_mapping = Utility::mapNeutrally(st_embd.s_nodes, st_one_edge.s_nodes);
+            else {
+                if (st_one_edge.b_social) st_embd.s_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.commSplit, 0);
+                else st_embd.s_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.s_nodes, 0);
+            }
+            if (st_embd.b_homo) st_embd.t_mapping = st_embd.s_mapping;
+            else {
+                if (st_embd.type == schema::json_embd_map_neutral) st_embd.s_mapping = Utility::mapNeutrally(st_embd.t_nodes, st_one_edge.t_nodes);
+                else {
+                    if (st_one_edge.b_social) st_embd.s_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.commSplit, 1);
+                    else st_embd.s_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.t_nodes, 1);
+                }
+            }
+
             sub_dir += "/embedded";
             mkdir(sub_dir);
             st_embd.basename = sub_dir + "/" + e_source + "_" + e_target;
@@ -795,12 +716,10 @@ void Generation::simpleGraph(St_EdgeGeneration& st_edge) {
 #ifdef PARALLEL
     std::vector<Store*> store_list;
     for (int i = 0; i < n_threads; ++i) {
-        std::string fn_thread = basename + "_" + std::to_string(i) + "." + g_format;
-        store_list.push_back(new Store(fn_thread, g_enum_format));
+        store_list.push_back(new Store(basename + "_thd" + std::to_string(i), g_format));
     }
 #else
-    std::string filename = basename + "." + g_format;
-    Store *store = new Store(filename, g_enum_format);
+    Store *store = new Store(basename, g_format);
 #endif
 
 #ifdef PATCH_VPP
@@ -986,12 +905,10 @@ void Generation::socialGraph(St_EdgeGeneration& st_edge) {
 #ifdef PARALLEL
     std::vector<Store*> store_list;
     for (int i = 0; i < n_threads; ++i) {
-        std::string fn_thread = basename + "_" + std::to_string(i) + "." + g_format;
-        store_list.push_back(new Store(fn_thread, g_enum_format));
+        store_list.push_back(new Store(basename + "_thd" + std::to_string(i), g_format));
     }
 #else
-    std::string filename = basename + "." + g_format;
-    Store *store = new Store(filename, g_enum_format);
+    Store *store = new Store(basename, g_format);
 #endif
 
     // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)    
@@ -1402,8 +1319,7 @@ void Generation::streamingSimpleGraph(St_EdgeGeneration& st_edge) {
     int_t iter_edges = 0;
     int file_no = 0;
 
-    std::string filename = basename + "_" + std::to_string(file_no) + "." + g_format;
-    Store *store = new Store(filename, g_enum_format);
+    Store *store = new Store(basename + "_stp" + std::to_string(file_no), g_format);
     std::unordered_set<int_t> nbrs;
     double cur_rate = gr;
     OutDegreeDistribution *pre_odd = nullptr;
@@ -1452,9 +1368,8 @@ void Generation::streamingSimpleGraph(St_EdgeGeneration& st_edge) {
         file_no ++;
         cur_rate += gr;
         pre_odd = cur_odd;
-        filename = basename + "_" + std::to_string(file_no) + "." + g_format;
         if (cur_rate < 1.0) {
-            store = new Store(filename, g_enum_format);
+            store = new Store(basename + "_stp" + std::to_string(file_no), g_format);
         }
     } while (cur_rate < 1.0);
     // store->close();
@@ -1541,12 +1456,10 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
 #ifdef PARALLEL
     std::vector<Store*> store_list;
     for (int i = 0; i < n_threads; ++i) {
-        std::string fn_thread = basename + "_" + std::to_string(i) + "." + g_format;
-        store_list.push_back(new Store(fn_thread, g_enum_format));
+        store_list.push_back(new Store(basename + "_thd" + std::to_string(i), g_format));
     }
 #else
-    std::string filename = basename + "." + g_format;
-    Store *store = new Store(filename, g_enum_format);
+    Store *store = new Store(basename, g_format);
 #endif
 
 #ifdef PATCH_VPP
@@ -1729,12 +1642,10 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
 #ifdef PARALLEL
     std::vector<Store*> store_list;
     for (int i = 0; i < n_threads; ++i) {
-        std::string fn_thread = basename + "_" + std::to_string(i) + "." + g_format;
-        store_list.push_back(new Store(fn_thread, g_enum_format));
+        store_list.push_back(new Store(basename + "_thd" + std::to_string(i), g_format));
     }
 #else
-    std::filename = basename + "." + g_format;
-    Store *store = new Store(filename, g_enum_format);
+    Store *store = new Store(basename, g_format);
 #endif
 
     // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)    
@@ -2015,16 +1926,291 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
 
 void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
     // according to st_edge
-    std::unordered_map<std::string, double>& comm_params = st_embd.comm_params;
-    std::unordered_map<std::string, double>& temp_params = st_embd.temp_params;
-    /*std::string& ind_type = st_embd.ind_type;
-    std::string& outd_type = st_edge.outd_type;*/
+    bool is_homo = st_embd.b_homo;
+    std::string& map_type = st_embd.type;
+    std::string& ind_type = st_embd.ind_type;
+    std::string& outd_type = st_embd.outd_type;
+    std::string& temp_type = st_embd.temp_type;
     int_t s_nodes = st_embd.s_nodes;
     int_t t_nodes = st_embd.t_nodes;
     int_t n_edges = st_embd.n_edges;
     std::string& basename = st_embd.basename;
-    
-    std::cout << "[Generation::embeddedGraph] enter success!" << std::endl;
+    std::unordered_map<std::string, double>& in_params = st_embd.in_params;
+    std::unordered_map<std::string, double>& out_params = st_embd.out_params;
+    std::unordered_map<std::string, double>& comm_params = st_embd.comm_params;
+    std::unordered_map<std::string, double>& temp_params = st_embd.temp_params;
+    std::vector<int_t>& s_mapping = st_embd.s_mapping;
+    std::vector<int_t>& t_mapping = st_embd.t_mapping;
+
+    std::vector<std::vector<int_t>>& windSplit = st_embd.windSplit;
+    std::vector<std::unordered_map<int_t, double>>& olAnchorComm = st_embd.olAnchorComm;
+
+    // start information
+    std::cout << "[Generation::embeddedGraph]: " << basename << std::endl;
+
+    int_t actual_edges = 0;
+    int_t extra_edges = 0;
+
+#ifdef PARALLEL
+    std::vector<Store*> store_list;
+    for (int i = 0; i < n_threads; ++i) {
+        store_list.push_back(new Store(basename + "_thd" + std::to_string(i), g_format));
+    }
+#else
+    Store* store = new Store(basename, g_format);
+#endif
+
+    int_t n_comm = comm_params[schema::json_comm_amount];
+    double comm_lambda = comm_params[schema::json_comm_lambda];
+    double comm_rho = comm_params[schema::json_comm_rho];
+
+    std::vector<std::vector<int_t>>& commSplit = st_embd.commSplit;
+    int_t an_comms = commSplit.size();
+    std::vector<int_t> sp_row_id(s_nodes, 0);
+    std::vector<int_t> cumu_row_id(s_nodes, 0);
+    std::vector<int_t> cumu_col_psum(an_comms, 0);
+    int_t gi = 0, sri = 0, cri = 0, psum = 0;
+    for (int i = 0; i < an_comms; ++i) {
+        cumu_col_psum[i] = psum;
+        psum += commSplit[i][1];
+        for (int_t j = 0; j < commSplit[i][0]; ++j) {
+            sp_row_id[gi] = i;
+            cumu_row_id[gi] = j;
+            gi++;
+        }
+    }
+
+    int_t id_min = in_params[schema::json_dist_min_degree];
+    int_t id_max = in_params[schema::json_dist_max_degree];
+    int_t od_min = out_params[schema::json_dist_min_degree];
+    int_t od_max = out_params[schema::json_dist_max_degree];
+    std::unordered_map<int, Distribution*> row_dist;
+    std::unordered_map<int, Distribution*> col_dist;
+    for (int i = 0; i < an_comms; ++i) {
+        if (!row_dist.count(commSplit[i][0])) {
+            int_t sub_edges = Utility::mathRound(commSplit[i][0] * 1.0 / s_nodes * n_edges);
+            row_dist[commSplit[i][0]] = getDist(od_min, od_max, commSplit[i][0], sub_edges, out_params, true, outd_type);
+        }
+        if (!col_dist.count(commSplit[i][1])) {
+            int_t sub_edges = Utility::mathRound(commSplit[i][1] * 1.0 / t_nodes * n_edges);
+            col_dist[commSplit[i][1]] = getDist(id_min, id_max, commSplit[i][1], sub_edges, in_params, false, ind_type);
+        }
+    }
+
+    int_t ts_min = temp_params[schema::json_temp_min_timestamp];
+    int_t ts_max = temp_params[schema::json_temp_max_timestamp];
+    std::vector<Timestamp*> main_timer(an_comms);
+    for (int i = 0; i < an_comms; ++i) { main_timer[i] = getTimer(windSplit[i][0], windSplit[i][1], temp_params, temp_type); }
+    Timestamp* extra_timer = getTimer(ts_min, ts_max, std::unordered_map<std::string, double>(), schema::json_temp_Uniform);
+
+    // show process
+    double cur = 0.0;
+    double progress = 0.0;
+    ProgressBar progress_bar;
+
+    // generate START
+#ifdef PARALLEL
+#pragma omp parallel for schedule (dynamic, thread_chunk_size)
+#endif
+    for (int_t i = 0; i < s_nodes; ++i) {
+        Store* store_ptr = nullptr;
+#ifdef PARALLEL
+        int tid = omp_get_thread_num();
+        store_ptr = store_list[tid];
+#else
+        store_ptr = store;
+#endif
+        // unique to each thread
+        int_t cumu_row_id_i = cumu_row_id[i];
+        int_t sp_row_i = sp_row_id[i];
+        int_t size_src_i = commSplit[sp_row_i][0];
+        int_t size_trg_i = commSplit[sp_row_i][1];
+
+        Distribution* o_dist = row_dist[size_src_i];
+        int_t main_out_degree = o_dist->genOutDegree(cumu_row_id_i);
+        int_t extra_out_degree = (rand.nextReal() < comm_rho) ? extraDegree(od_max - main_out_degree + 10, comm_rho + 1.0) : 0;
+        std::vector<int_t> extra_out_degree_distr = extra_out_degree ? Utility::splitDegree(commSplit, extra_out_degree, 1) : std::vector<int_t>();
+        // if (extra_out_degree) std::cout << "i, extra_out_degree: " << i << ", " << extra_out_degree << std::endl;
+
+        // i's communities (source)
+        std::set<int_t> comms_i({ sp_row_i });
+        for (auto& ol_anchor_comm : olAnchorComm[sp_row_i]) {
+            double ol = ol_anchor_comm.second;
+            int_t thre_row_i = (int_t)(size_src_i * ol);
+            if (cumu_row_id_i > thre_row_i) comms_i.insert(ol_anchor_comm.first);
+        }
+
+        int_t cumu_col = 0;
+        int_t sp_col_j = 0;
+        std::set<std::pair<int_t, int_t>> nbrs;
+        while (sp_col_j < an_comms) {
+            // std::cout << "\tsp_col_j: " << sp_col_j << std::endl;
+            int_t size_src_j = commSplit[sp_col_j][0];
+            int_t size_trg_j = commSplit[sp_col_j][1];
+
+            //int_t extra_out_degree_j = Utility::mathRound(extra_out_degree * 1.0 * size_trg_j / (1.0 * t_nodes));
+            int_t extra_out_degree_j = extra_out_degree ? extra_out_degree_distr[sp_col_j] : 0;
+
+            // within communities
+            if (sp_col_j == sp_row_i) {
+                // coincident parts: (a+b)->(a+b)
+                Distribution* i_dist = col_dist[size_trg_j];
+                for (int_t ti = 0; ti < main_out_degree; ) {
+                    int_t t = i_dist->genTargetID();
+                    while (is_homo && i == t + cumu_col) { t = i_dist->genTargetID(); }
+                    // time window of community `sp_col_i`
+                    //int_t ts = extra_timer.genTimestamp(windSplit[sp_row_i][0], windSplit[sp_row_i][1]);
+                    int_t ts = main_timer[sp_row_i]->genTimestamp();
+                    if (nbrs.insert({ t_mapping[t + cumu_col], ts }).second) ++ti;
+                }
+            }
+            else {
+                // overlapping parts
+                bool b_overlap_ij = olAnchorComm[sp_row_i].find(sp_col_j) != olAnchorComm[sp_row_i].end();
+                if (b_overlap_ij && sp_row_i < sp_col_j) {
+                    double ol = olAnchorComm[sp_row_i][sp_col_j];
+                    int_t thre_row_i = (int_t)(size_src_i * ol);
+                    if (cumu_row_id_i + 1 >= thre_row_i) {
+                        // TODO: (b+c)->(b+c): b->b
+                        int_t ol_num = main_out_degree * (1.0 - ol) * (1.0 - ol);        // TODO
+                        int_t sp_size = (int_t)(size_trg_i * ol);
+                        int_t ol_size = size_trg_i - sp_size;
+                        //std::cout << "\t\tb->b: ol_num: " << ol_num << ", sp_size: " << sp_size << ", ol_size: " << ol_size << std::endl;
+                        for (int_t ti = 0; ti < ol_num; ) {
+                            int_t t = rand.nextInt(ol_size - 1);
+                            while (is_homo && i == t + cumu_col_psum[sp_row_i] + sp_size) { t = rand.nextInt(ol_size - 1); }
+                            // time window of community `sp_col_j`
+                            //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                            int_t ts = main_timer[sp_col_j]->genTimestamp();
+                            //std::cout << "\t\t\twant to add (" << i << "," << t + cumu_col_psum[sp_row_i] + sp_size << ")" << std::endl;
+                            if (nbrs.insert({ t_mapping[t + cumu_col_psum[sp_row_i] + sp_size], ts }).second) ++ti;
+                        }
+
+                        // (b+c)->(b+c): b->c
+                        ol_num = main_out_degree * (1.0 - ol);       // TODO
+                        for (int_t ti = 0; ti < ol_num; ) {
+                            int_t t = rand.nextInt(size_trg_j - 1);
+                            // time window of community `sp_col_j`
+                            //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                            int_t ts = main_timer[sp_col_j]->genTimestamp();
+                            if (nbrs.insert({ t_mapping[t + cumu_col], ts }).second) ++ti;
+                        }
+                    }
+
+                }
+                if (b_overlap_ij && sp_row_i > sp_col_j) {
+                    // (b+c)->(b+c): c->b
+                    double ol = olAnchorComm[sp_row_i][sp_col_j];
+                    int_t sp_size = (int_t)(size_trg_j * ol);
+                    int_t ol_size = size_trg_j - sp_size;
+                    int_t ol_num = main_out_degree * (1.0 - ol);   // TODO
+                    for (int_t ti = 0; ti < ol_num; ) {
+                        int_t t = rand.nextInt(ol_size - 1);
+                        // time window of community `sp_col_j`
+                        //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
+                        int_t ts = main_timer[sp_col_j]->genTimestamp();
+                        if (nbrs.insert({ t_mapping[t + cumu_col + sp_size], ts }).second) ++ti;
+                    }
+                }
+            }
+            int_t within_edges = nbrs.size();
+
+            // beyond anchor community or between anchor communities
+            for (int_t ti = 0; ti < extra_out_degree_j; ) {
+                int_t t = rand.nextInt(size_trg_j - 1);
+                while (sp_row_i == sp_col_j && is_homo && i == t + cumu_col) { t = rand.nextInt(size_trg_j - 1); }
+                // t's communities (target)
+                std::set<int_t> comms_j({ sp_col_j });
+                for (auto& ol_anchor_comm : olAnchorComm[sp_col_j]) {
+                    double ol = ol_anchor_comm.second;
+                    int_t thre_col_j = (int_t)(size_trg_j * ol);
+                    if (t > thre_col_j) comms_j.insert(ol_anchor_comm.first);
+                }
+                std::set<int_t> comms_ij;   // intersection set
+                set_intersection(comms_i.begin(), comms_i.end(), comms_j.begin(), comms_j.end(),
+                    inserter(comms_ij, comms_ij.begin()));
+                if (comms_ij.empty()) {
+                    // beyond: assign any timestamp
+                    int_t ts = extra_timer->genTimestamp();
+                    //std::cout << "\t\tts(beyond): " << ts << std::endl;
+                    if (nbrs.insert({ t + cumu_col, ts }).second) ++ti;   // succeed
+                }
+                else {
+                    // between: common time window
+                    std::vector<std::vector<int_t>> window_ij;
+                    for (auto comm : comms_ij) { window_ij.push_back(windSplit[comm]); }
+                    auto window_ij_unn = Utility::unionWindow(window_ij);
+                    auto window_ij_cpl = Utility::compleWindow(window_ij_unn,
+                        temp_params[schema::json_temp_min_timestamp],
+                        temp_params[schema::json_temp_max_timestamp]);
+                    if (window_ij_cpl.empty()) continue;
+                    //        : assign some timestamp that is not inside window_ij
+                    int_t ts = extra_timer->genTimestamp(window_ij_cpl);
+                    if (nbrs.insert({ t + cumu_col, ts }).second) ++ti;   // succeed                        
+                }
+            }
+
+            int_t all_edges = nbrs.size();
+
+#ifdef PARALLEL
+#pragma omp atomic
+#endif
+            actual_edges += all_edges;
+
+#ifdef PARALLEL
+#pragma omp atomic
+#endif
+            extra_edges += all_edges - within_edges;
+
+            // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
+#ifdef PATCH_VPP
+            if (b_patch) {
+                for (auto n : nbrs) {
+                    int_t ri = rand.nextInt(patch_contact_list.size() - 1);
+                    std::string attach = patch_contact_list[ri] + "\tvp_" + std::to_string(i) + "_VPerson\tvp_" + std::to_string(n) + "_VPerson\tContactRelation";
+                    store_ptr->writeTSVLine(s_mapping[i], n, attach);
+                }
+            }
+            else {
+                store_ptr->writeLine(s_mapping[i], nbrs);
+            }
+#else
+            store_ptr->writeLine(s_mapping[i], nbrs);
+#endif
+            // END PATCH
+
+            nbrs.clear();
+            cumu_col += size_trg_j;
+            sp_col_j++;
+        }
+
+        cur = (double)actual_edges / (double)n_edges;
+        if (cur - progress >= 0.01) {
+#ifdef PARALLEL
+#pragma omp atomic
+#endif
+            progress += 0.01;
+            gp_progress = progress;
+            //progress_bar.set_progress(progress);
+        }
+    }
+    // generate END
+
+    // Store close
+#ifdef PARALLEL
+    for (int i = 0; i < n_threads; ++i) {
+        store_list[i]->close();
+    }
+#else
+    store->close();
+#endif
+
+    gp_progress = 1.0;
+    // Output info
+    std::cout << "[Generation::embeddedGraph] #Source Nodes = " << s_nodes << " , #Target Nodes = " << t_nodes << std::endl;
+    std::cout << "[Generation::embeddedGraph] #Actual Edges = " << actual_edges << std::endl;
+    std::cout << "[Generation::embeddedGraph] #Extra Edges = " << extra_edges << std::endl;
+    std::cout << "[Generation::embeddedGraph] #Expect Edges = " << n_edges << std::endl;
 }
 
 Distribution* Generation::getDist(int_t mid, int_t mxd, int_t n, int_t m,
@@ -2148,7 +2334,7 @@ bool Generation::my_rename(std::string& src_name, std::string& tgt_name) {
     return true;
 }
 
-bool Generation::check_temporal(JSON::json& temp, std::string info) {
+bool Generation::check_json_temp(JSON::json& temp, std::string info) {
     if (!temp.is_object()) {
         std::cerr << info << " (object)." << std::endl;
         return false;
@@ -2214,9 +2400,9 @@ bool Generation::check_temporal(JSON::json& temp, std::string info) {
     return true;
 }
 
-bool Generation::check_community(JSON::json& comm, std::string info, bool required) {
+bool Generation::check_json_comm(JSON::json& comm, std::string info, bool required) {
     if (!comm.is_object()) {
-        std::cerr << info << " (Object)." << std::endl;
+        std::cerr << info << " (object)." << std::endl;
         return false;
     }
     // community amount
@@ -2242,12 +2428,77 @@ bool Generation::check_community(JSON::json& comm, std::string info, bool requir
     }
     // window size (optional)
     if (comm.find(schema::json_comm_window_size) != comm.end() && !comm[schema::json_comm_window_size].is_number()) {
-        std::cerr << info << " (window size: number)." << std::endl;
+        std::cerr << info << " (win_size: number)." << std::endl;
         return false;
     }
     // overlap (optional)
     if (comm.find(schema::json_comm_overlap) != comm.end() && !comm[schema::json_comm_overlap].is_number()) {
         std::cerr << info << " (overlap: number)." << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool Generation::check_json_dist(JSON::json& dist, std::string info) {
+    if (!dist.is_object()) {
+        std::cerr << info << " (object)." << std::endl;
+        return false;
+    }
+    if (dist.find(schema::json_dist_type) == dist.end()) {
+        std::cerr << info << " (type)." << std::endl;
+        return false;
+    }
+    if (!dist[schema::json_dist_type].is_string()) {
+        std::cerr << info << " (type: string)." << std::endl;
+        return false;
+    }
+    std::string dist_type = dist[schema::json_dist_type];
+    if (dist.find(schema::json_dist_min_degree) == dist.end()) {
+        std::cerr << info << " (min_d)." << std::endl;
+        return false;
+    }
+    if (!dist[schema::json_dist_min_degree].is_number()) {
+        std::cerr << info << " (min_d: number)." << std::endl;
+        return false;
+    }
+    if (dist.find(schema::json_dist_max_degree) == dist.end()) {
+        std::cerr << info << " (max_d)." << std::endl;
+        return false;
+    }
+    if (!dist[schema::json_dist_max_degree].is_number()) {
+        std::cerr << info << " (max_d: number)." << std::endl;
+        return false;
+    }
+    if (dist_type == schema::json_dist_PowerLaw) {
+        if (dist.find(schema::json_dist_PL_lambda) == dist.end()) {
+            std::cerr << info << " (power_law lambda)." << std::endl;
+            return false;
+        }
+        if (!dist[schema::json_dist_PL_lambda].is_number()) {
+            std::cerr << info << " (power_law lambda: number)." << std::endl;
+            return false;
+        }
+    } else if (dist_type == schema::json_dist_Normal || dist_type == schema::json_dist_LogNormal) {
+        if (dist.find(schema::json_dist_Nor_mu) == dist.end()) {
+            std::cerr << info << " ([log]normal mu)." << std::endl;
+            return false;
+        }
+        if (!dist[schema::json_dist_Nor_mu].is_number()) {
+            std::cerr << info << " ([log]normal mu: number)." << std::endl;
+            return false;
+        }
+        if (dist.find(schema::json_dist_Nor_sigma) == dist.end()) {
+            std::cerr << info << " ([log]normal sigma)." << std::endl;
+            return false;
+        }
+        if (!dist[schema::json_dist_Nor_sigma].is_number()) {
+            std::cerr << info << " ([log]normal sigma: number)." << std::endl;
+            return false;
+        }
+    } else if (dist_type == schema::json_dist_Uniform) {
+        //
+    } else {
+        std::cerr << info << " (unknown distribution or not implement: " << dist_type << ")." << std::endl;
         return false;
     }
     return true;

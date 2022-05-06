@@ -37,11 +37,11 @@ namespace JSON = nlohmann;
 namespace gl {
 namespace fastsgg {
 
-enum class EnumStoreFormat : char {
-    TSV,
-    ADJ,
-    CSR
-};
+//enum class EnumStoreFormat : char {
+//    TSV,
+//    ADJ,
+//    CSR
+//};
 
 namespace schema {
 
@@ -106,8 +106,9 @@ const static std::string json_gr = "gr";
 // storage format
 const static std::string json_store_format = "store_format";
 const static std::string json_format_ADJ = "ADJ";
-const static std::string json_format_TSV = "TSV";   // Default format
+const static std::string json_format_TSV = "TSV";   // default format
 const static std::string json_format_CSR = "CSR";
+const static std::string json_format_CSROFF = "CSROFF"; // attached
 
 } //! namespace schema
 

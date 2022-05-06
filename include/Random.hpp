@@ -47,6 +47,11 @@ public:
         return uni_int(generator);
     }
 
+    int_t nextIntExp(double theta) { // [0, \inf): exp distribution
+        std::exponential_distribution<> exp_int(theta);
+        return std::max(exp_int(generator), .0);
+    }
+
     std::vector<int_t> nextInts(const std::vector<int_t>& w, int_t c, bool chosen) {
         std::discrete_distribution<int_t> dis_int(w.begin(), w.end());
         if (chosen) {
@@ -58,6 +63,10 @@ public:
             for (int i = 0; i < c; i++) { ans[dis_int(generator)]++; }
             return ans;
         }
+    }
+
+    bool nextBool() {
+        return nextInt(1);
     }
 }; //! class Random
 

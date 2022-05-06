@@ -13,6 +13,7 @@ namespace gl {
 namespace fastsgg {
 
 typedef struct _generate_embedded {
+    bool b_homo;
     std::string basename;
     std::string type;
     int_t s_nodes;
@@ -33,6 +34,9 @@ typedef struct _generate_embedded {
 
     std::vector<std::vector<int_t>> windSplit;
     std::vector<std::unordered_map<int_t, double>> olAnchorComm;
+
+    std::vector<int_t> s_mapping;
+    std::vector<int_t> t_mapping;
 } St_EmbeddedGeneration;
 
 typedef struct _generate_edge {
@@ -85,7 +89,6 @@ private:
 
     double g_gr;
     std::string g_format;
-    EnumStoreFormat g_enum_format;
     std::vector<St_EdgeGeneration> edge_gen_plan;           // Generation Plan
     std::vector<St_NodeAttrGeneration> node_attr_gen_plan;  // Generation Plan
     
@@ -155,9 +158,11 @@ public:
     bool my_rename(std::string& src_name, std::string& tgt_name);
 
 private:
-    static bool check_temporal(JSON::json& temp, std::string info);
+    static bool check_json_temp(JSON::json& temp, std::string info);
 
-    static bool check_community(JSON::json& comm, std::string info, bool required);
+    static bool check_json_comm(JSON::json& comm, std::string info, bool required);
+
+    static bool check_json_dist(JSON::json& dist, std::string info);
 }; //! class Generation
 
 } //! namespace fastsgg
