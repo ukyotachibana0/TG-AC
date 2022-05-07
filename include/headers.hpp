@@ -29,19 +29,10 @@
 #define PARALLEL
 // #undef PARALLEL
 
-// #define PATCH_VPP
-#undef PATCH_VPP
-
 namespace JSON = nlohmann;
 
 namespace gl {
 namespace fastsgg {
-
-//enum class EnumStoreFormat : char {
-//    TSV,
-//    ADJ,
-//    CSR
-//};
 
 namespace schema {
 
@@ -111,13 +102,6 @@ const static std::string json_format_CSR = "CSR";
 const static std::string json_format_CSROFF = "CSROFF"; // attached
 
 } //! namespace schema
-
-// PATCH
-const static std::vector<std::string> patch_contact_list({
-    // "同航班", "同车次", "同住", "会面", "通话", "亲属", "好友"
-    "a", "b", "c"
-});
-// END PATCH
 
 } //! namespace fastsgg
 } //! namespace gl

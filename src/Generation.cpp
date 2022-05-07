@@ -723,59 +723,18 @@ void Generation::simpleGraph(St_EdgeGeneration& st_edge) {
     Store *store = new Store(basename, g_format);
 #endif
 
-#ifdef PATCH_VPP
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-    bool b_patch = false;
-    Store *patch_store = nullptr;
-    std::vector<Store*> patch_store_list;
-    std::vector<std::string> url_list;
-
-    if (st_edge.e_source == "Page" && st_edge.e_target == "VPerson") {
-        b_patch = true;
-        std::string pp_filename = filename + "_co_occurrence";
-
-#ifdef PARALLEL
-        for (int i = 0; i < n_threads; ++i) {
-            std::string fn_thread = pp_filename + "_" + std::to_string(i);
-            patch_store_list.push_back(new Store(fn_thread, g_enum_format));
-        }
-#else
-        patch_store = new Store(pp_filename, g_enum_format);
-#endif
-
-        std::ifstream fin("urls.txt");
-        if (!fin.is_open()) {
-            std::cout << "Cannot open urls.txt" << std::endl;
-        }
-        std::string a_url;
-        while (std::getline(fin, a_url)) {
-            url_list.push_back(a_url);
-        }
-    }
-#endif
-    // END PATCH
-
     // parallel
 #ifdef PARALLEL
     #pragma omp parallel for schedule (dynamic, thread_chunk_size)
 #endif
     for (int_t i = 0; i < s_nodes; ++i) {
         Store *store_ptr = nullptr;
-#ifdef PATCH_VPP
-        Store *patch_store_ptr = nullptr;
-#endif
 
 #ifdef PARALLEL
         int tid = omp_get_thread_num();
         store_ptr = store_list[tid];
-#ifdef PATCH_VPP
-        patch_store_ptr = patch_store_list[tid];
-#endif
 #else
         store_ptr = store;
-#ifdef PATCH_VPP
-        patch_store_ptr = patch_store;
-#endif
 #endif
 
         // 各线程独有
@@ -784,22 +743,7 @@ void Generation::simpleGraph(St_EdgeGeneration& st_edge) {
         int_t out_degree = out_dist->genOutDegree(i);
         for (int_t j = 0; j < out_degree; ++j) {
             int_t t = in_dist->genTargetID();
-            while (is_homo && t == i) {
-                t = in_dist->genTargetID();
-            }
-
-            // PATCH, Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-            if (b_patch) {
-                std::string temp = url_list[i] + "\tvp_" + std::to_string(t) + "_VPerson\tvp_";
-                for (auto one : nbrs) {
-                    std::string attach = temp + std::to_string(one) + "_VPerson\tCo_occurRelation";
-                    patch_store_ptr->writeTSVLine(t, one, attach);
-                }
-            }
-#endif
-            // END PATCH
-
+            while (is_homo && t == i) { t = in_dist->genTargetID(); }
             nbrs.insert(t);
         }
 
@@ -808,20 +752,7 @@ void Generation::simpleGraph(St_EdgeGeneration& st_edge) {
 #endif
         actual_edges += nbrs.size();
 
-        // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-        if (b_patch) {
-            for (auto one : nbrs) {
-                std::string attach = "vp_" + std::to_string(one) + "_VPerson\tp_" + std::to_string(i) + "_Page\tOccurRelation";
-                store_ptr->writeTSVLine(one, i, attach);
-            }
-        } else {
-            store_ptr->writeLine(i, nbrs);
-        }
-#else
         store_ptr->writeLine(i, nbrs);
-#endif
-        // END PATCH
 
         nbrs.clear();
         // if (actual_edges > n_edges) {
@@ -847,28 +778,8 @@ void Generation::simpleGraph(St_EdgeGeneration& st_edge) {
     for (int i = 0; i < n_threads; ++i) {
         store_list[i]->close();
     }
-
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-    if (b_patch) {
-        for (int i = 0; i < n_threads; ++i) {
-            patch_store_list[i]->close();
-        }
-    }
-#endif
-    // END PATCH
-
 #else
     store->close();
-
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-    if (b_patch) {
-        patch_store->close();
-    }
-#endif
-    // END PATCH
-
 #endif
 
     gp_progress = 1.0;
@@ -911,15 +822,6 @@ void Generation::socialGraph(St_EdgeGeneration& st_edge) {
 #else
     Store *store = new Store(basename, g_format);
 #endif
-
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)    
-#ifdef PATCH_VPP
-    bool b_patch = false;
-    if (st_edge.e_source == "VPerson" && st_edge.e_target == "VPerson") {
-        b_patch = true;
-    }
-#endif
-    // END PATCH
 
     int_t n_comm = comm_params[schema::json_comm_amount];
     double comm_lambda = comm_params[schema::json_comm_lambda];
@@ -1137,22 +1039,6 @@ void Generation::socialGraph(St_EdgeGeneration& st_edge) {
             /*actual_edges_v += within_edges_ + extra_edges_ + overlap_edges_;
             extra_edges_v += extra_edges_;
             overlap_edges_v += overlap_edges_;*/
-            
-            // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-            if (b_patch) {
-                for (auto n : nbrs) {
-                    int_t ri = rand.nextInt(patch_contact_list.size() - 1);
-                    std::string attach = patch_contact_list[ri] + "\tvp_" + std::to_string(i) + "_VPerson\tvp_" + std::to_string(n) + "_VPerson\tContactRelation";
-                    store_ptr->writeTSVLine(i, n, attach);
-                }
-            } else {
-                store_ptr->writeLine(i, nbrs);
-            }
-#else
-            store_ptr->writeLine(i, nbrs);
-#endif
-            // END PATCH
 
             nbrs.clear();
             cumu_col += split[sp_col_j][1];
@@ -1463,59 +1349,18 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
     Store *store = new Store(basename, g_format);
 #endif
 
-#ifdef PATCH_VPP
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-    bool b_patch = false;
-    Store *patch_store = nullptr;
-    std::vector<Store*> patch_store_list;
-    std::vector<std::string> url_list;
-
-    if (st_edge.e_source == "Page" && st_edge.e_target == "VPerson") {
-        b_patch = true;
-        std::string pp_filename = filename + "_co_occurrence";
-
-#ifdef PARALLEL
-        for (int i = 0; i < n_threads; ++i) {
-            std::string fn_thread = pp_filename + "_" + std::to_string(i);
-            patch_store_list.push_back(new Store(fn_thread, g_enum_format));
-        }
-#else
-        patch_store = new Store(pp_filename, g_enum_format);
-#endif
-
-        std::ifstream fin("urls.txt");
-        if (!fin.is_open()) {
-            std::cout << "Cannot open urls.txt" << std::endl;
-        }
-        std::string a_url;
-        while (std::getline(fin, a_url)) {
-            url_list.push_back(a_url);
-        }
-    }
-#endif
-    // END PATCH
-
     // parallel FOR EACH NODE
 #ifdef PARALLEL
     #pragma omp parallel for schedule (dynamic, thread_chunk_size)
 #endif
     for (int_t i = 0; i < s_nodes; ++i) {
         Store *store_ptr = nullptr;
-#ifdef PATCH_VPP
-        Store *patch_store_ptr = nullptr;
-#endif
 
 #ifdef PARALLEL
         int tid = omp_get_thread_num();
         store_ptr = store_list[tid];
-#ifdef PATCH_VPP
-        patch_store_ptr = patch_store_list[tid];
-#endif
 #else
         store_ptr = store;
-#ifdef PATCH_VPP
-        patch_store_ptr = patch_store;
-#endif
 #endif
 
         // unique to each thread
@@ -1527,18 +1372,6 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
             while (is_homo && nbr == i) { nbr = in_dist->genTargetID(); }
             int_t ts = timer->genTimestamp();
 
-            // PATCH, Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-            if (b_patch) {
-                std::string temp = url_list[i] + "\tvp_" + std::to_string(t) + "_VPerson\tvp_";
-                for (auto one : nbrs) {
-                    std::string attach = temp + std::to_string(one) + "_VPerson\tCo_occurRelation";
-                    patch_store_ptr->writeTSVLine(nbr, one, attach);
-                }
-            }
-#endif
-            // END PATCH
-
             if (nbrs.insert({nbr, ts}).second)  // succeed
                 j++;
         }
@@ -1547,21 +1380,6 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
         #pragma omp atomic
 #endif
         actual_edges += nbrs.size();
-
-        // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-        if (b_patch) {
-            for (auto one : nbrs) {
-                std::string attach = "vp_" + std::to_string(one) + "_VPerson\tp_" + std::to_string(i) + "_Page\tOccurRelation";
-                store_ptr->writeTSVLine(one, i, attach);
-            }
-        } else {
-            store_ptr->writeLine(i, nbrs, tss);
-        }
-#else
-        store_ptr->writeLine(i, nbrs);
-#endif
-        // END PATCH
 
         nbrs.clear();
         cur = (double)actual_edges / (double)n_edges;
@@ -1581,27 +1399,8 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
     for (int i = 0; i < n_threads; ++i) {
         store_list[i]->close();
     }
-
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-    if (b_patch) {
-        for (int i = 0; i < n_threads; ++i) {
-            patch_store_list[i]->close();
-        }
-    }
-#endif
-    // END PATCH
-
 #else
     store->close();
-
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-    if (b_patch) {
-        patch_store->close();
-    }
-#endif
-    // END PATCH
 
 #endif
 
@@ -1648,15 +1447,6 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
 #else
     Store *store = new Store(basename, g_format);
 #endif
-
-    // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)    
-#ifdef PATCH_VPP
-    bool b_patch = false;
-    if (st_edge.e_source == "VPerson" && st_edge.e_target == "VPerson") {
-        b_patch = true;
-    }
-#endif
-    // END PATCH
 
     int_t n_comm = comm_params[schema::json_comm_amount];
     double comm_lambda = comm_params[schema::json_comm_lambda];
@@ -1873,22 +1663,6 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
             #pragma omp atomic
 #endif
             extra_edges += all_edges - within_edges;
-            
-            // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-            if (b_patch) {
-                for (auto n : nbrs) {
-                    int_t ri = rand.nextInt(patch_contact_list.size() - 1);
-                    std::string attach = patch_contact_list[ri] + "\tvp_" + std::to_string(i) + "_VPerson\tvp_" + std::to_string(n) + "_VPerson\tContactRelation";
-                    store_ptr->writeTSVLine(i, n, attach);
-                }
-            } else {
-                store_ptr->writeLine(i, nbrs);
-            }
-#else
-            store_ptr->writeLine(i, nbrs);
-#endif
-            // END PATCH
 
             nbrs.clear();
             cumu_col += size_trg_j;
@@ -1926,7 +1700,7 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
 }
 
 void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
-    // according to st_edge
+    // according to st_embd
     bool is_homo = st_embd.b_homo;
     std::string& map_type = st_embd.type;
     std::string& ind_type = st_embd.ind_type;
@@ -2162,23 +1936,6 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
 #pragma omp atomic
 #endif
             extra_edges += all_edges - within_edges;
-
-            // PATCH, for Co-occurrence (Person - Page - Person => Person - Person)
-#ifdef PATCH_VPP
-            if (b_patch) {
-                for (auto n : nbrs) {
-                    int_t ri = rand.nextInt(patch_contact_list.size() - 1);
-                    std::string attach = patch_contact_list[ri] + "\tvp_" + std::to_string(i) + "_VPerson\tvp_" + std::to_string(n) + "_VPerson\tContactRelation";
-                    store_ptr->writeTSVLine(s_mapping[i], n, attach);
-                }
-            }
-            else {
-                store_ptr->writeLine(s_mapping[i], nbrs);
-            }
-#else
-            store_ptr->writeLine(s_mapping[i], nbrs);
-#endif
-            // END PATCH
 
             nbrs.clear();
             cumu_col += size_trg_j;

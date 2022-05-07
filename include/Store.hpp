@@ -73,51 +73,6 @@ public:
         current_file_no ++;
     }
 
-    void writeTSVLine(int_t src, int_t tgt, std::string attach="", bool reverse=false) {
-#ifdef PATCH_VPP
-        // PATCH
-        std::string a_src = std::to_string(src);
-        std::string b_tgt = std::to_string(tgt);
-        if (attach.find("Page") != std::string::npos) {
-            a_src = "vp_" + a_src;
-            b_tgt = "p_" + b_tgt;
-        } else {
-            a_src = "vp_" + a_src;
-            b_tgt = "vp_" + b_tgt;
-        }
-        if (reverse) {
-            bw->write(b_tgt);
-            bw->tab();
-            bw->write(a_src);
-        } else {
-            bw->write(a_src);
-            bw->tab();
-            bw->write(b_tgt);
-        }
-#else
-        if (!reverse) {
-            bw->write(src);
-            bw->tab();
-            bw->write(tgt);
-        } else {
-            bw->write(tgt);
-            bw->tab();
-            bw->write(src);
-        }
-#endif
-        // END PATCH
-        if (!attach.empty()) {
-            bw->tab();
-            bw->write(attach);
-        }
-        bw->newline();
-        // update #Lines
-        current_file_lines ++;
-        if (current_file_lines == file_lines_upper) {
-            nextFile();
-        }
-    }
-
     void writeLine(int_t i, std::unordered_set<int_t>& adj) {
         if (adj.empty())
             return;
