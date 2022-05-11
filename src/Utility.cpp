@@ -287,6 +287,24 @@ std::vector<std::vector<int_t>> Utility::compleWindow(const std::vector<std::vec
     return ans;
 }
 
+std::unordered_map<int_t, std::unordered_set<int_t>> Utility::idenOlComm(int_t n) {
+    const int_t n_pair = n / 2; // every community gets a overlapping anchor community on average
+
+    std::unordered_map<int_t, std::unordered_set<int_t>> ans(n);
+    int_t i = 0;
+    Random rand;
+    while (i < n_pair) {
+        int_t a = rand.nextInt(n - 1);
+        int_t b = rand.nextInt(n - 1);
+        std::pair<int_t, int_t> one_pair(a, b);
+        if (one_pair.first == one_pair.second) continue;
+        if (ans[one_pair.first].insert(one_pair.second).second &&
+            ans[one_pair.second].insert(one_pair.first).second)
+            ++i;
+    }
+
+    return ans;
+}
 
 std::vector<std::unordered_map<int_t, double>> Utility::idenOlAnchorComm(int_t n) {
     const double ol_min = 0.1, ol_max = 0.3;
@@ -299,8 +317,8 @@ std::vector<std::unordered_map<int_t, double>> Utility::idenOlAnchorComm(int_t n
        std::pair<int_t, int_t> one_pair(rand.nextInt(n - 1), rand.nextInt(n - 1));
        if (one_pair.first == one_pair.second) continue;
        double ol = rand.nextReal(ol_max - ol_min) + ol_min;
-       if (ans[one_pair.first].insert({one_pair.second, 1 - ol}).second &&
-           ans[one_pair.second].insert({one_pair.first, 1 - ol}).second) 
+       if (ans[one_pair.first].insert({one_pair.second, ol}).second &&
+           ans[one_pair.second].insert({one_pair.first, ol}).second) 
            ++i;
     }
     /*double ol = 0.9;
@@ -317,6 +335,66 @@ std::vector<std::unordered_map<int_t, double>> Utility::idenOlAnchorComm(int_t n
     }
     std::cout << std::endl;*/
 
+    return ans;
+}
+
+std::vector<std::vector<int_t>> Utility::homoOlRange(const std::vector<std::vector<int_t>>& comm_split_psum, std::unordered_map<int_t, double>& ol_comm, int_t i) {
+    std::vector<std::vector<int_t>> ans;
+    for (auto& p : ol_comm) {
+        int_t j = p.first;
+        if (i > j) {
+            int_t j_size = comm_split_psum[j + 1][0] - comm_split_psum[j][0];
+            int_t sp_size = j_size - j_size * p.second;
+            ans.push_back({ comm_split_psum[j][0] + sp_size, comm_split_psum[j + 1][0] - 1 });
+        }
+    }
+    return ans;
+}
+
+std::vector<std::vector<int_t>> Utility::homoOlRange(const std::vector<std::vector<int_t>>& comm_split_psum, std::unordered_set<int_t>& ol_comm, int_t i, double ol) {
+    std::vector<std::vector<int_t>> ans;
+    for (auto& j : ol_comm) {
+        if (i > j) {
+            int_t j_size = comm_split_psum[j + 1][0] - comm_split_psum[j][0];
+            int_t sp_size = j_size - j_size * ol;
+            ans.push_back({ comm_split_psum[j][0] + sp_size, comm_split_psum[j + 1][0] - 1 });
+        }
+    }
+    return ans;
+}
+
+std::vector<std::vector<std::vector<int_t>>> Utility::heteOlRange(const std::vector<std::vector<int_t>>& comm_split_psum, std::unordered_map<int_t, double>& ol_comm, int_t i) {
+    std::vector<std::vector<std::vector<int_t>>> ans;
+    for (auto& p : ol_comm) {
+        int_t j = p.first;
+        if (i > j) {
+            int_t j_size_s = comm_split_psum[j + 1][0] - comm_split_psum[j][0];
+            int_t j_size_t = comm_split_psum[j + 1][1] - comm_split_psum[j][1];
+            int_t sp_size_s = j_size_s - j_size_s * p.second;
+            int_t sp_size_t = j_size_t - j_size_t * p.second;
+            ans.push_back({
+                { comm_split_psum[j][0] + sp_size_s, comm_split_psum[j][1] + sp_size_t },
+                { comm_split_psum[j + 1][0] - 1, comm_split_psum[j + 1][1] - 1 }
+            });
+        }
+    }
+    return ans;
+}
+
+std::vector<std::vector<std::vector<int_t>>> Utility::heteOlRange(const std::vector<std::vector<int_t>>& comm_split_psum, std::unordered_set<int_t>& ol_comm, int_t i, double ol) {
+    std::vector<std::vector<std::vector<int_t>>> ans;
+    for (auto& j : ol_comm) {
+        if (i > j) {
+            int_t j_size_s = comm_split_psum[j + 1][0] - comm_split_psum[j][0];
+            int_t j_size_t = comm_split_psum[j + 1][1] - comm_split_psum[j][1];
+            int_t sp_size_s = j_size_s - j_size_s * ol;
+            int_t sp_size_t = j_size_t - j_size_t * ol;
+            ans.push_back({
+                { comm_split_psum[j][0] + sp_size_s, comm_split_psum[j][1] + sp_size_t },
+                { comm_split_psum[j + 1][0] - 1, comm_split_psum[j + 1][1] - 1 }
+            });
+        }
+    }
     return ans;
 }
 

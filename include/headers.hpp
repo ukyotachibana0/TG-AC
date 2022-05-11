@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
-// #include <random>
 #include <cmath>    // isnan
 #include <ctime>
 #include "json.hpp"
@@ -100,7 +99,6 @@ const static std::string json_format_ADJ = "ADJ";
 const static std::string json_format_TSV = "TSV";   // default format
 const static std::string json_format_CSR = "CSR";
 const static std::string json_format_CSROFF = "CSROFF"; // attached
-
 } //! namespace schema
 
 } //! namespace fastsgg

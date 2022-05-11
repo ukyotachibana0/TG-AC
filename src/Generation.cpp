@@ -362,7 +362,6 @@ void Generation::generate_plan() {
         std::string sub_dir = graph_name + "/" + e_label;
         mkdir(sub_dir);
 
-        std::string basename = sub_dir + "/" + e_source + "_" + e_target;
         int_t e_amount = one_edge[schema::json_edge_amount];
         // # Information
         st_one_edge.e_label = e_label;
@@ -371,7 +370,7 @@ void Generation::generate_plan() {
         st_one_edge.n_edges = e_amount;
         st_one_edge.s_nodes = s_nodes;
         st_one_edge.t_nodes = t_nodes;
-        st_one_edge.basename = basename;
+        st_one_edge.basedir = sub_dir + "/";
 
         auto& out_params = st_one_edge.out_params;
         auto& in_params = st_one_edge.in_params;
@@ -426,12 +425,13 @@ void Generation::generate_plan() {
             comm_params[schema::json_comm_amount] = comm[schema::json_comm_amount];
             comm_params[schema::json_comm_lambda] = comm[schema::json_comm_lambda];
             comm_params[schema::json_comm_rho] = comm[schema::json_comm_rho];
-
+            // split community
+            st_one_edge.commSplit = Utility::splitCommunity(s_nodes, t_nodes,
+                comm_params[schema::json_comm_amount], comm_params[schema::json_comm_lambda]);
             if (!st_one_edge.b_temporal) st_one_edge.b_social = true;
             // anchor communities
             else if (comm.find(schema::json_comm_window_size) != comm.end()) {
                 comm_params[schema::json_comm_window_size] = comm[schema::json_comm_window_size];
-                // comm_params[schema::json_comm_window_step] = one_comm[schema::json_comm_window_step];
                 st_one_edge.b_social = true;
                 // split time window
                 std::unordered_map<std::string, double>& temp_params = st_one_edge.temp_params;
@@ -441,28 +441,14 @@ void Generation::generate_plan() {
                     temp_params[schema::json_temp_min_timestamp],
                     temp_params[schema::json_temp_max_timestamp]);
                 // identify overlap anchor communitiy pairs
-                st_one_edge.olAnchorComm = Utility::idenOlAnchorComm(comm_params[schema::json_comm_amount]);
+                st_one_edge.olAnchorComm = Utility::idenOlAnchorComm(st_one_edge.commSplit.size());
             }
-            // split community
-            st_one_edge.commSplit = Utility::splitCommunity(s_nodes, t_nodes,
-                comm_params[schema::json_comm_amount], comm_params[schema::json_comm_lambda]);
             // overlapping
             st_one_edge.b_overlap = false;
             if (comm.find(schema::json_comm_overlap) != comm.end()) {
                 st_one_edge.b_overlap = true;
                 st_one_edge.dv_overlap = comm[schema::json_comm_overlap];
-                size_t n_comm = st_one_edge.commSplit.size();
-                std::cout << "n_comm: " << n_comm << std::endl;
-                int_t n_pair = n_comm / 2, i = 0;    // every community gets a overlapping anchor community on average
-                while (i < n_pair) {
-                    int_t a = rand.nextInt(n_comm - 1);
-                    int_t b = rand.nextInt(n_comm - 1);
-                    std::pair<int_t, int_t> one_pair(a, b);
-                    if (one_pair.first == one_pair.second) continue;
-                    if (st_one_edge.overlapComm[one_pair.first].insert(one_pair.second).second &&
-                        st_one_edge.overlapComm[one_pair.second].insert(one_pair.first).second)
-                        ++i;
-                }
+                st_one_edge.overlapComm = Utility::idenOlComm(st_one_edge.commSplit.size());
             }
         }
 
@@ -470,9 +456,11 @@ void Generation::generate_plan() {
         st_one_edge.b_embedded = false;
         if (one_edge.find(schema::json_embd) != one_edge.end()) {
             auto& embd = one_edge[schema::json_embd];
-            auto& st_embd = st_one_edge.st_embd;
+            auto& st_embd = st_one_edge.embd_gen_plan;
             
             /* basic info */
+            st_embd.e_source = e_source;
+            st_embd.e_target = e_target;
             st_embd.type = embd[schema::json_embd_type];
             st_embd.s_nodes = embd[schema::json_embd_srce_amount];
             st_embd.t_nodes= embd[schema::json_embd_trgt_amount];
@@ -586,24 +574,23 @@ void Generation::generate_plan() {
             st_embd.olAnchorComm = Utility::idenOlAnchorComm(embd_comm_params[schema::json_comm_amount]);
 
             /* map */
-            st_embd.b_homo = e_source == e_target;
             if (st_embd.type == schema::json_embd_map_neutral) st_embd.s_mapping = Utility::mapNeutrally(st_embd.s_nodes, st_one_edge.s_nodes);
             else {
                 if (st_one_edge.b_social) st_embd.s_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.commSplit, 0);
                 else st_embd.s_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.s_nodes, 0);
             }
-            if (st_embd.b_homo) st_embd.t_mapping = st_embd.s_mapping;
+            if (e_source == e_target) st_embd.t_mapping = st_embd.s_mapping;
             else {
-                if (st_embd.type == schema::json_embd_map_neutral) st_embd.s_mapping = Utility::mapNeutrally(st_embd.t_nodes, st_one_edge.t_nodes);
+                if (st_embd.type == schema::json_embd_map_neutral) st_embd.t_mapping = Utility::mapNeutrally(st_embd.t_nodes, st_one_edge.t_nodes);
                 else {
-                    if (st_one_edge.b_social) st_embd.s_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.commSplit, 1);
-                    else st_embd.s_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.t_nodes, 1);
+                    if (st_one_edge.b_social) st_embd.t_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.commSplit, 1);
+                    else st_embd.t_mapping = Utility::mapPostively(st_embd.commSplit, st_one_edge.t_nodes, 1);
                 }
             }
 
             sub_dir += "/embedded";
             mkdir(sub_dir);
-            st_embd.basename = sub_dir + "/" + e_source + "_" + e_target;
+            st_embd.basedir = sub_dir + "/";
 
             st_one_edge.b_embedded = true;
         }
@@ -632,20 +619,12 @@ void Generation::run() {
 
     // Topology & Attributes
     for (auto& st_one_edge : edge_gen_plan) {
-        if (st_one_edge.b_temporal) {
-            if (st_one_edge.b_social) temporalSocialGraph(st_one_edge);
-            else temporalSimpleGraph(st_one_edge);
-        } else {
-            if (st_one_edge.b_social) {
-                if (b_streaming_style) streamingSocialGraph(st_one_edge);
-                else socialGraph(st_one_edge);
-            } else {
-                if (b_streaming_style) streamingSimpleGraph(st_one_edge);
-                else simpleGraph(st_one_edge);
-            }
-        }
-
-        if (st_one_edge.b_embedded) embeddedGraph(st_one_edge.st_embd);
+        // generate
+        generateGraph(st_one_edge);
+        if (st_one_edge.b_embedded) embeddedGraph(st_one_edge.embd_gen_plan);
+        // ground truth
+        output_ground_truth(st_one_edge, st_one_edge.b_temporal, st_one_edge.b_social, st_one_edge.b_overlap);
+        if (st_one_edge.b_embedded) output_ground_truth(st_one_edge.embd_gen_plan, true, true, false);
     }
 
     std::cout << "[Generation::run] end." << std::endl;
@@ -668,11 +647,21 @@ bool Generation::hasGenerationStart() {
     return gb_start_gen;
 }
 
-int_t Generation::getActualEdges(std::string e_label) {
-    if (actual_edge_nums.count(e_label)) {
-        return actual_edge_nums[e_label];
+void Generation::generateGraph(St_EdgeGeneration& st_edge) {
+    if (st_edge.b_temporal) {
+        if (st_edge.b_social) temporalSocialGraph(st_edge);
+        else temporalSimpleGraph(st_edge);
     }
-    return 0;
+    else {
+        if (st_edge.b_social) {
+            if (b_streaming_style) streamingSocialGraph(st_edge);
+            else socialGraph(st_edge);
+        }
+        else {
+            if (b_streaming_style) streamingSimpleGraph(st_edge);
+            else simpleGraph(st_edge);
+        }
+    }
 }
 
 void Generation::simpleGraph(St_EdgeGeneration& st_edge) {
@@ -684,7 +673,7 @@ void Generation::simpleGraph(St_EdgeGeneration& st_edge) {
     int_t s_nodes = st_edge.s_nodes;
     int_t t_nodes = st_edge.t_nodes;
     int_t n_edges = st_edge.n_edges;
-    std::string& basename = st_edge.basename;
+    std::string& basename = st_edge.basedir + st_edge.e_source + "_" + st_edge.e_target;
 
     gp_tag = st_edge.e_label;
     std::cout << "[Generation::simpleGraph]: " << st_edge.e_source << " -> " << st_edge.e_target << std::endl;
@@ -783,11 +772,13 @@ void Generation::simpleGraph(St_EdgeGeneration& st_edge) {
 #endif
 
     gp_progress = 1.0;
+
+    auto& ground_truth = st_edge.ground_truth;
+    ground_truth.actual_edges = actual_edges;
+
     std::cout << "[Generation::simpleGraph] #Source Nodes = " << s_nodes << ", #Target Nodes = " << t_nodes << std::endl;
     std::cout << "[Generation::simpleGraph] #Actual Edges = " << actual_edges << std::endl;
     std::cout << "[Generation::simpleGraph] #Expect Edges = " << n_edges << std::endl;
-
-    actual_edge_nums[st_edge.e_label] = actual_edges;
 }
 
 void Generation::socialGraph(St_EdgeGeneration& st_edge) {
@@ -800,7 +791,7 @@ void Generation::socialGraph(St_EdgeGeneration& st_edge) {
     int_t s_nodes = st_edge.s_nodes;
     int_t t_nodes = st_edge.t_nodes;
     int_t n_edges = st_edge.n_edges;
-    std::string& basename = st_edge.basename;
+    std::string& basename = st_edge.basedir + st_edge.e_source + "_" + st_edge.e_target;
 
     // start information
     // gp_tag = "Edge-social" + st_edge.e_source + "-" + st_edge.e_target;
@@ -1158,7 +1149,11 @@ void Generation::socialGraph(St_EdgeGeneration& st_edge) {
 #endif
 
     gp_progress = 1.0;
-    // Output info
+
+    auto& ground_truth = st_edge.ground_truth;
+    ground_truth.actual_edges = actual_edges;
+    ground_truth.extra_edges = extra_edges;
+
     std::cout << "[Generation::socialGraph] #Source Nodes = " << s_nodes << " , #Target Nodes = " << t_nodes << std::endl;
     std::cout << "[Generation::socialGraph] #Actual Edges = " << actual_edges << std::endl;
     std::cout << "[Generation::socialGraph] #Extra Edges = " << extra_edges << std::endl;
@@ -1166,8 +1161,6 @@ void Generation::socialGraph(St_EdgeGeneration& st_edge) {
     std::cout << "[Generation::socialGraph] #Extra Edges V = " << extra_edges_v << std::endl;
     std::cout << "[Generation::socialGraph] #Overlap Edges V = " << overlap_edges_v << std::endl;*/
     std::cout << "[Generation::socialGraph] #Expect Edges = " << n_edges << std::endl;
-
-    actual_edge_nums[st_edge.e_label] = actual_edges;
 }
 
 void Generation::streamingSimpleGraph(St_EdgeGeneration& st_edge) {
@@ -1179,7 +1172,7 @@ void Generation::streamingSimpleGraph(St_EdgeGeneration& st_edge) {
     int_t s_nodes = st_edge.s_nodes;
     int_t t_nodes = st_edge.t_nodes;
     int_t n_edges = st_edge.n_edges;
-    std::string& basename = st_edge.basename;
+    std::string& basename = st_edge.basedir + st_edge.e_source + "_" + st_edge.e_target;
     double gr = g_gr;
 
     // gp_tag = "Edge-streaming" + st_edge.e_source + "-" + st_edge.e_target;
@@ -1259,15 +1252,15 @@ void Generation::streamingSimpleGraph(St_EdgeGeneration& st_edge) {
             store = new Store(basename + "_stp" + std::to_string(file_no), g_format);
         }
     } while (cur_rate < 1.0);
-    // store->close();
-
     // Generation end
+
+    auto& ground_truth = st_edge.ground_truth;
+    ground_truth.actual_edges = actual_edges;
+
     gp_progress = 1.0;
     std::cout << "[Generation::streamingSimpleGraph] #Source Nodes = " << s_nodes << ", #Target Nodes = " << t_nodes << std::endl;
     std::cout << "[Generation::streamingSimpleGraph] #Actual Edges = " << actual_edges << std::endl;
     std::cout << "[Generation::streamingSimpleGraph] #Expect Edges = " << n_edges << std::endl; 
-
-    actual_edge_nums[st_edge.e_label] = actual_edges;
 }
 
 void Generation::streamingSocialGraph(St_EdgeGeneration& st_edge) {
@@ -1280,7 +1273,7 @@ void Generation::streamingSocialGraph(St_EdgeGeneration& st_edge) {
     int_t s_nodes = st_edge.s_nodes;
     int_t t_nodes = st_edge.t_nodes;
     int_t n_edges = st_edge.n_edges;
-    std::string& basename = st_edge.basename;
+    std::string& basename = st_edge.basedir + st_edge.e_source + "_" + st_edge.e_target;
     std::string& format = g_format;
     double gr = g_gr;
 
@@ -1298,7 +1291,7 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
     int_t s_nodes = st_edge.s_nodes;
     int_t t_nodes = st_edge.t_nodes;
     int_t n_edges = st_edge.n_edges;
-    std::string& basename = st_edge.basename;
+    std::string& basename = st_edge.basedir + st_edge.e_source + "_" + st_edge.e_target;
 
     std::unordered_map<std::string, double>& temp_params = st_edge.temp_params;
     std::string& temp_type = st_edge.temp_type;
@@ -1405,11 +1398,13 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
 #endif
 
     gp_progress = 1.0;
+
+    auto& ground_truth = st_edge.ground_truth;
+    ground_truth.actual_edges = actual_edges;
+
     std::cout << "[Generation::temporalSimpleGraph] #Source Nodes = " << s_nodes << ", #Target Nodes = " << t_nodes << std::endl;
     std::cout << "[Generation::temporalSimpleGraph] #Actual Edges = " << actual_edges << std::endl;
     std::cout << "[Generation::temporalSimpleGraph] #Expect Edges = " << n_edges << std::endl;
-
-    actual_edge_nums[st_edge.e_label] = actual_edges;
 }
 
 void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
@@ -1422,7 +1417,7 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
     int_t s_nodes = st_edge.s_nodes;
     int_t t_nodes = st_edge.t_nodes;
     int_t n_edges = st_edge.n_edges;
-    std::string& basename = st_edge.basename;
+    std::string& basename = st_edge.basedir + st_edge.e_source + "_" + st_edge.e_target;
 
     std::unordered_map<std::string, double>& temp_params = st_edge.temp_params;
     std::string& temp_type = st_edge.temp_type;
@@ -1559,7 +1554,6 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                     int_t t = i_dist->genTargetID();
                     while (is_homo && i == t + cumu_col) { t = i_dist->genTargetID(); }
                     // time window of community `sp_col_i`
-                    //int_t ts = extra_timer.genTimestamp(windSplit[sp_row_i][0], windSplit[sp_row_i][1]);
                     int_t ts = main_timer[sp_row_i]->genTimestamp();
                     if (nbrs.insert({ t + cumu_col, ts }).second) ++ti;
                 }
@@ -1568,29 +1562,25 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                 bool b_overlap_ij = olAnchorComm[sp_row_i].find(sp_col_j) != olAnchorComm[sp_row_i].end();
                 if (b_overlap_ij && sp_row_i < sp_col_j) {
                     double ol = olAnchorComm[sp_row_i][sp_col_j];
-                    int_t thre_row_i = (int_t)(size_src_i * ol);
-                    if (cumu_row_id_i + 1 >= thre_row_i) {
+                    int_t thre_row_i = size_src_i - (int_t)(size_src_i * ol);
+                    if (cumu_row_id_i >= thre_row_i) {
                         // TODO: (b+c)->(b+c): b->b
-                        int_t ol_num = main_out_degree * (1.0 - ol) * (1.0 - ol);        // TODO
-                        int_t sp_size = (int_t)(size_trg_i * ol);
-                        int_t ol_size = size_trg_i - sp_size;
-                        //std::cout << "\t\tb->b: ol_num: " << ol_num << ", sp_size: " << sp_size << ", ol_size: " << ol_size << std::endl;
+                        int_t ol_num = main_out_degree * ol * ol;        // TODO
+                        int_t ol_size = (int_t)(size_trg_i * ol);
+                        int_t sp_size = size_trg_i - ol_size;
                         for (int_t ti = 0; ti < ol_num; ) {
                             int_t t = rand.nextInt(ol_size - 1);
                             while (is_homo && i == t + cumu_col_psum[sp_row_i] + sp_size) { t = rand.nextInt(ol_size - 1); }
                             // time window of community `sp_col_j`
-                            //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
                             int_t ts = main_timer[sp_col_j]->genTimestamp();
-                            //std::cout << "\t\t\twant to add (" << i << "," << t + cumu_col_psum[sp_row_i] + sp_size << ")" << std::endl;
                             if (nbrs.insert({ t + cumu_col_psum[sp_row_i] + sp_size, ts }).second) ++ti;
                         }
 
                         // (b+c)->(b+c): b->c
-                        ol_num = main_out_degree * (1.0 - ol);       // TODO
+                        ol_num = main_out_degree * ol;       // TODO
                         for (int_t ti = 0; ti < ol_num; ) {
                             int_t t = rand.nextInt(size_trg_j - 1);
                             // time window of community `sp_col_j`
-                            //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
                             int_t ts = main_timer[sp_col_j]->genTimestamp();
                             if (nbrs.insert({ t + cumu_col, ts }).second) ++ti;
                         }
@@ -1600,13 +1590,12 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                 if (b_overlap_ij && sp_row_i > sp_col_j) {
                     // (b+c)->(b+c): c->b
                     double ol = olAnchorComm[sp_row_i][sp_col_j];
-                    int_t sp_size = (int_t)(size_trg_j * ol);
-                    int_t ol_size = size_trg_j - sp_size;
-                    int_t ol_num = main_out_degree * (1.0 - ol);   // TODO
+                    int_t ol_size = (int_t)(size_trg_j * ol);
+                    int_t sp_size = size_trg_j - ol_size;
+                    int_t ol_num = main_out_degree * ol;   // TODO
                     for (int_t ti = 0; ti < ol_num; ) {
                         int_t t = rand.nextInt(ol_size - 1);
                         // time window of community `sp_col_j`
-                        //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
                         int_t ts = main_timer[sp_col_j]->genTimestamp();
                         if (nbrs.insert({ t + cumu_col + sp_size, ts }).second) ++ti;
                     }
@@ -1631,7 +1620,6 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
                 if (comms_ij.empty()) {
                     // beyond: assign any timestamp
                     int_t ts = extra_timer->genTimestamp();
-                    //std::cout << "\t\tts(beyond): " << ts << std::endl;
                     if (nbrs.insert({t + cumu_col, ts}).second) ++ti;   // succeed
                 } else {
                     // between: common time window
@@ -1691,17 +1679,20 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
 #endif
 
     gp_progress = 1.0;
-    // Output info
+
+    auto& ground_truth = st_edge.ground_truth;
+    ground_truth.actual_edges = actual_edges;
+    ground_truth.extra_edges = extra_edges;
+
     std::cout << "[Generation::temporalSocialGraph] #Source Nodes = " << s_nodes << " , #Target Nodes = " << t_nodes << std::endl;
     std::cout << "[Generation::temporalSocialGraph] #Actual Edges = " << actual_edges << std::endl;
     std::cout << "[Generation::temporalSocialGraph] #Extra Edges = " << extra_edges << std::endl;
     std::cout << "[Generation::temporalSocialGraph] #Expect Edges = " << n_edges << std::endl;
-    actual_edge_nums[st_edge.e_label] = actual_edges;
 }
 
 void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
     // according to st_embd
-    bool is_homo = st_embd.b_homo;
+    bool is_homo = st_embd.e_source == st_embd.e_target;
     std::string& map_type = st_embd.type;
     std::string& ind_type = st_embd.ind_type;
     std::string& outd_type = st_embd.outd_type;
@@ -1709,7 +1700,8 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
     int_t s_nodes = st_embd.s_nodes;
     int_t t_nodes = st_embd.t_nodes;
     int_t n_edges = st_embd.n_edges;
-    std::string& basename = st_embd.basename;
+    std::string& basename = st_embd.basedir + st_embd.e_source + "_" + st_embd.e_target;
+
     std::unordered_map<std::string, double>& in_params = st_embd.in_params;
     std::unordered_map<std::string, double>& out_params = st_embd.out_params;
     std::unordered_map<std::string, double>& comm_params = st_embd.comm_params;
@@ -1721,7 +1713,7 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
     std::vector<std::unordered_map<int_t, double>>& olAnchorComm = st_embd.olAnchorComm;
 
     // start information
-    std::cout << "[Generation::embeddedGraph]: " << basename << std::endl;
+    std::cout << "[Generation::embeddedGraph]: " << st_embd.e_source << "->" << st_embd.e_target << std::endl;
 
     int_t actual_edges = 0;
     int_t extra_edges = 0;
@@ -1805,7 +1797,6 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
         int_t main_out_degree = o_dist->genOutDegree(cumu_row_id_i);
         int_t extra_out_degree = (rand.nextReal() < comm_rho) ? extraDegree(od_max - main_out_degree + 10, comm_rho + 1.0) : 0;
         std::vector<int_t> extra_out_degree_distr = extra_out_degree ? Utility::splitDegree(commSplit, extra_out_degree, 1) : std::vector<int_t>();
-        // if (extra_out_degree) std::cout << "i, extra_out_degree: " << i << ", " << extra_out_degree << std::endl;
 
         // i's communities (source)
         std::set<int_t> comms_i({ sp_row_i });
@@ -1819,11 +1810,9 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
         int_t sp_col_j = 0;
         std::set<std::pair<int_t, int_t>> nbrs;
         while (sp_col_j < an_comms) {
-            // std::cout << "\tsp_col_j: " << sp_col_j << std::endl;
             int_t size_src_j = commSplit[sp_col_j][0];
             int_t size_trg_j = commSplit[sp_col_j][1];
 
-            //int_t extra_out_degree_j = Utility::mathRound(extra_out_degree * 1.0 * size_trg_j / (1.0 * t_nodes));
             int_t extra_out_degree_j = extra_out_degree ? extra_out_degree_distr[sp_col_j] : 0;
 
             // within communities
@@ -1834,7 +1823,6 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
                     int_t t = i_dist->genTargetID();
                     while (is_homo && i == t + cumu_col) { t = i_dist->genTargetID(); }
                     // time window of community `sp_col_i`
-                    //int_t ts = extra_timer.genTimestamp(windSplit[sp_row_i][0], windSplit[sp_row_i][1]);
                     int_t ts = main_timer[sp_row_i]->genTimestamp();
                     if (nbrs.insert({ t_mapping[t + cumu_col], ts }).second) ++ti;
                 }
@@ -1844,29 +1832,25 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
                 bool b_overlap_ij = olAnchorComm[sp_row_i].find(sp_col_j) != olAnchorComm[sp_row_i].end();
                 if (b_overlap_ij && sp_row_i < sp_col_j) {
                     double ol = olAnchorComm[sp_row_i][sp_col_j];
-                    int_t thre_row_i = (int_t)(size_src_i * ol);
+                    int_t thre_row_i = size_src_i - (int_t)(size_src_i * ol);
                     if (cumu_row_id_i + 1 >= thre_row_i) {
                         // TODO: (b+c)->(b+c): b->b
-                        int_t ol_num = main_out_degree * (1.0 - ol) * (1.0 - ol);        // TODO
-                        int_t sp_size = (int_t)(size_trg_i * ol);
-                        int_t ol_size = size_trg_i - sp_size;
-                        //std::cout << "\t\tb->b: ol_num: " << ol_num << ", sp_size: " << sp_size << ", ol_size: " << ol_size << std::endl;
+                        int_t ol_num = main_out_degree * ol * ol;        // TODO
+                        int_t ol_size = (int_t)(size_trg_i * ol);
+                        int_t sp_size = size_trg_i - ol_size;
                         for (int_t ti = 0; ti < ol_num; ) {
                             int_t t = rand.nextInt(ol_size - 1);
                             while (is_homo && i == t + cumu_col_psum[sp_row_i] + sp_size) { t = rand.nextInt(ol_size - 1); }
                             // time window of community `sp_col_j`
-                            //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
                             int_t ts = main_timer[sp_col_j]->genTimestamp();
-                            //std::cout << "\t\t\twant to add (" << i << "," << t + cumu_col_psum[sp_row_i] + sp_size << ")" << std::endl;
                             if (nbrs.insert({ t_mapping[t + cumu_col_psum[sp_row_i] + sp_size], ts }).second) ++ti;
                         }
 
                         // (b+c)->(b+c): b->c
-                        ol_num = main_out_degree * (1.0 - ol);       // TODO
+                        ol_num = main_out_degree * ol;       // TODO
                         for (int_t ti = 0; ti < ol_num; ) {
                             int_t t = rand.nextInt(size_trg_j - 1);
                             // time window of community `sp_col_j`
-                            //int_t ts = extra_timer.genTimestamp(windSplit[sp_col_j][0], windSplit[sp_col_j][1]);
                             int_t ts = main_timer[sp_col_j]->genTimestamp();
                             if (nbrs.insert({ t_mapping[t + cumu_col], ts }).second) ++ti;
                         }
@@ -1876,9 +1860,9 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
                 if (b_overlap_ij && sp_row_i > sp_col_j) {
                     // (b+c)->(b+c): c->b
                     double ol = olAnchorComm[sp_row_i][sp_col_j];
-                    int_t sp_size = (int_t)(size_trg_j * ol);
-                    int_t ol_size = size_trg_j - sp_size;
-                    int_t ol_num = main_out_degree * (1.0 - ol);   // TODO
+                    int_t ol_num = main_out_degree * ol;   // TODO
+                    int_t ol_size = (int_t)(size_trg_j * ol);
+                    int_t sp_size = size_trg_j - ol_size;
                     for (int_t ti = 0; ti < ol_num; ) {
                         int_t t = rand.nextInt(ol_size - 1);
                         // time window of community `sp_col_j`
@@ -1964,7 +1948,11 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
 #endif
 
     gp_progress = 1.0;
-    // Output info
+
+    auto& ground_truth = st_embd.ground_truth;
+    ground_truth.actual_edges = actual_edges;
+    ground_truth.extra_edges = extra_edges;
+
     std::cout << "[Generation::embeddedGraph] #Source Nodes = " << s_nodes << " , #Target Nodes = " << t_nodes << std::endl;
     std::cout << "[Generation::embeddedGraph] #Actual Edges = " << actual_edges << std::endl;
     std::cout << "[Generation::embeddedGraph] #Extra Edges = " << extra_edges << std::endl;
@@ -2260,6 +2248,81 @@ bool Generation::check_json_dist(JSON::json& dist, std::string info) {
         return false;
     }
     return true;
+}
+
+void Generation::output_ground_truth(St_BasicEdgeGeneration& st_basic, bool temporal, bool social, bool overlap) {
+    JSON::json gt;
+
+    bool b_homo = st_basic.e_source == st_basic.e_target;
+    if (b_homo) gt["node"] = st_basic.s_nodes;
+    else {
+        gt["source_node"] = st_basic.s_nodes;
+        gt["target_node"] = st_basic.t_nodes;
+    }
+    gt["actual_edge"] = st_basic.ground_truth.actual_edges;
+
+    auto& comm_split = st_basic.commSplit;
+    auto& ol_anchor_comm = st_basic.olAnchorComm;
+    auto& ol_comm = st_basic.overlapComm;
+    int_t an_comms = comm_split.size(), psum_s = 0, psum_t = 0;
+    std::vector<std::vector<int_t>> comm_split_psum(an_comms + 1, std::vector<int_t>(2));
+
+    if (!social) goto ending;
+
+    for (int_t i = 0; i < an_comms; ++i) {
+        comm_split_psum[i][0] = psum_s;
+        comm_split_psum[i][1] = psum_t;
+        psum_s += comm_split[i][0];
+        psum_t += comm_split[i][1];
+    }
+    comm_split_psum[an_comms][0] = psum_s;
+    comm_split_psum[an_comms][1] = psum_t;
+
+    gt["extra_edge"] = st_basic.ground_truth.extra_edges;
+    gt["actual_comm"] = an_comms;
+    gt["community"] = JSON::json::array();
+    for (int_t i = 0; i < an_comms; ++i) {
+        JSON::json comm;
+
+        std::vector<std::vector<int_t>> node_homo;
+        std::vector<std::vector<std::vector<int_t>>> node_hete;
+        // temporal
+        if (temporal) { 
+            comm["window"] = { st_basic.windSplit[i][0],st_basic.windSplit[i][1] };
+            if (!ol_anchor_comm[i].empty()) {
+                comm["overlap"] = ol_anchor_comm[i];
+                if (b_homo) node_homo = Utility::homoOlRange(comm_split_psum, ol_anchor_comm[i], i);
+                else node_hete = Utility::heteOlRange(comm_split_psum, ol_anchor_comm[i], i);
+            }
+        }
+        // overlap
+        else if (overlap && ol_comm.find(i) != ol_comm.end()) {
+            comm["overlap"] = ol_comm[i];
+            if (b_homo) node_homo = Utility::homoOlRange(comm_split_psum, ol_comm[i], i, st_basic.dv_overlap);
+            else node_hete = Utility::heteOlRange(comm_split_psum, ol_comm[i], i, st_basic.dv_overlap);
+        }
+        // node
+        if (b_homo) {
+            node_homo.push_back({ comm_split_psum[i][0], comm_split_psum[i + 1][0] - 1 });
+            comm["node"] = node_homo;
+        } else {
+            node_hete.push_back({
+                {comm_split_psum[i][0], comm_split_psum[i][1]},
+                {comm_split_psum[i + 1][0] - 1, comm_split_psum[i + 1][1] - 1}
+            });
+            comm["node"] = node_hete;
+        }
+        
+        gt["community"].push_back(comm);
+    }
+
+ending:
+    std::string filename = st_basic.basedir + "ground_truth.json";
+    std::ofstream of(filename);
+    of << gt.dump(4);
+    of.close();
+
+    std::cout << "[Generation::output_ground_truth] end." << std::endl;
 }
 
 } //! namespace fastsgg

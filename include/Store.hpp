@@ -74,8 +74,8 @@ public:
     }
 
     void writeLine(int_t i, std::unordered_set<int_t>& adj) {
-        if (adj.empty())
-            return;
+        if (adj.empty()) return;
+
         if (format == schema::json_format_TSV) { // TSV
             for (auto n : adj) {
                 bw->write(i);
@@ -84,9 +84,7 @@ public:
                 bw->newline();
                 // update #Lines
                 current_file_lines ++;
-                if (current_file_lines == file_lines_upper) {
-                    nextFile();
-                }
+                if (current_file_lines == file_lines_upper) nextFile();
             }
         } else if (format == schema::json_format_ADJ) { // ADJ
             bw->write(i);
@@ -97,9 +95,7 @@ public:
             bw->newline();
             // update #Lines
             current_file_lines ++;
-            if (current_file_lines == file_lines_upper) {
-                nextFile();
-            }
+            if (current_file_lines == file_lines_upper) nextFile();
         } else { //  CSR
             bw->write(i);
             bw->tab();
@@ -117,7 +113,6 @@ public:
     void writeLine(int_t i, std::set<std::pair<int_t, int_t>>& adj) {
         if (adj.empty()) return;
 
-        // consider different formats
         if (format == schema::json_format_TSV) {           // TSV
             for (auto n : adj) {
                 bw->write(i);

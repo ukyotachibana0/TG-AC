@@ -38,7 +38,17 @@ public:
 
     static std::vector<std::vector<int_t>> compleWindow(const std::vector<std::vector<int_t>>& window, int_t e_mit, int_t e_mat);
 
+    static std::unordered_map<int_t, std::unordered_set<int_t>> idenOlComm(int_t n);
+
     static std::vector<std::unordered_map<int_t, double>> idenOlAnchorComm(int_t n);
+
+    static std::vector<std::vector<int_t>> homoOlRange(const std::vector<std::vector<int_t>>& comm_split_psum, std::unordered_map<int_t, double>& ol_comm, int_t i);
+
+    static std::vector<std::vector<int_t>> homoOlRange(const std::vector<std::vector<int_t>>& comm_split_psum, std::unordered_set<int_t>& ol_comm, int_t i, double ol);
+
+    static std::vector<std::vector<std::vector<int_t>>> heteOlRange(const std::vector<std::vector<int_t>>& comm_split_psum, std::unordered_map<int_t, double>& ol_comm, int_t i);
+
+    static std::vector<std::vector<std::vector<int_t>>> heteOlRange(const std::vector<std::vector<int_t>>& comm_split_psum, std::unordered_set<int_t>& ol_comm, int_t i, double ol);
 
     static std::vector<int_t> mapNeutrally(int_t n, int_t N);
 
