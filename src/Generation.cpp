@@ -762,14 +762,16 @@ void Generation::simpleGraph(St_EdgeGeneration& st_edge) {
         }
     }
 
-    // Store close
+    // deconstruct
 #ifdef PARALLEL
     for (int i = 0; i < n_threads; ++i) {
-        store_list[i]->close();
+        delete store_list[i];
     }
 #else
-    store->close();
+    delete store;
 #endif
+    delete in_dist;
+    delete out_dist;
 
     gp_progress = 1.0;
 
@@ -1139,14 +1141,16 @@ void Generation::socialGraph(St_EdgeGeneration& st_edge) {
     // }
     // // parallel generation END
 
-    // Store close
+    // deconstruct
 #ifdef PARALLEL
     for (int i = 0; i < n_threads; ++i) {
-        store_list[i]->close();
+        delete store_list[i];
     }
 #else
-    store->close();
+    delete store;
 #endif
+    for (auto& dist : row_dist) { delete dist.second; }
+    for (auto& dist : col_dist) { delete dist.second; }
 
     gp_progress = 1.0;
 
@@ -1387,15 +1391,17 @@ void Generation::temporalSimpleGraph(St_EdgeGeneration& st_edge) {
         }
     }
 
-    // Store close
+    // deconstruct
 #ifdef PARALLEL
     for (int i = 0; i < n_threads; ++i) {
-        store_list[i]->close();
+        delete store_list[i];
     }
 #else
-    store->close();
-
+    delete store;
 #endif
+    delete out_dist;
+    delete in_dist;
+    delete timer;
 
     gp_progress = 1.0;
 
@@ -1669,14 +1675,18 @@ void Generation::temporalSocialGraph(St_EdgeGeneration& st_edge) {
     }
     // generate END
 
-    // Store close
+    // deconstruct
 #ifdef PARALLEL
     for (int i = 0; i < n_threads; ++i) {
-        store_list[i]->close();
+        delete store_list[i];
     }
 #else
-    store->close();
+    delete store;
 #endif
+    for (auto& dist : row_dist) { delete dist.second; }
+    for (auto& dist : col_dist) { delete dist.second; }
+    for (auto& timer : main_timer) { delete timer; }
+    delete extra_timer;
 
     gp_progress = 1.0;
 
@@ -1938,14 +1948,18 @@ void Generation::embeddedGraph(St_EmbeddedGeneration& st_embd) {
     }
     // generate END
 
-    // Store close
+    // deconstruct
 #ifdef PARALLEL
     for (int i = 0; i < n_threads; ++i) {
-        store_list[i]->close();
+        delete store_list[i];
     }
 #else
-    store->close();
+    delete store;
 #endif
+    for (auto& dist : row_dist) { delete dist.second; }
+    for (auto& dist : col_dist) { delete dist.second; }
+    for (auto& timer : main_timer) { delete timer; }
+    delete extra_timer;
 
     gp_progress = 1.0;
 
