@@ -43,8 +43,10 @@ int main(int argc, char const *argv[])
     TimeCounter tc;
     tc.start();
     const char* filename = argv[1];
+    const char* dirname = argv[2];
     string str_filename(filename);
-    Generation gen(str_filename);
+    string str_dirname(dirname);
+    Generation gen(str_filename, str_dirname);
     gen.run();
     tc.stop();
     cout << "[Main] Elapsed time : " << tc.milliseconds() << " ms." << endl;

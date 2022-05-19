@@ -32,11 +32,15 @@ Generation::Generation() {
     gb_start_gen = false;
 }
 
-Generation::Generation(std::string& filename) {
+Generation::Generation(std::string& filename, std::string& dirname) {
+    std::cout << "[Generation::Generation] json: " << filename << " , basedir: " << dirname << std::endl;
+
+    std::cout << "[Generation::Generation] basedir exists: " << path_exists(dirname) << std::endl;
+
     json_filename = filename;
     std::ifstream fin(filename.c_str());
     if (!fin.is_open()) {
-        std::cerr << "[Generation::Generation(string)] Cannot open " << filename << std::endl;
+        std::cerr << "[Generation::Generation] Cannot open " << filename << std::endl;
         return;
     }
     fin >> json_obj;
@@ -49,7 +53,9 @@ Generation::Generation(std::string& filename) {
 #ifdef DEBUG
     std::cout << "#Threads = " << n_threads << std::endl;
 #endif
-
+    
+    if (dirname.back() == '/' || dirname.back() == '\\') dirname.pop_back();
+    store_dir = dirname;
     gp_progress = 0.0;
     gp_tag = "";
     gb_gen_done = false;
@@ -321,9 +327,11 @@ bool Generation::check_json() {
 }
 
 void Generation::generate_plan() {
+    mkdir(store_dir);
     // graph name
     std::string graph_name = json_obj[schema::json_graph];
-    mkdir(graph_name);
+    store_dir += "/" + graph_name;
+    mkdir(store_dir);
     // node schema
     auto& node_schema = json_obj[schema::json_node];
     std::unordered_map<std::string, int_t> node_label_amount;
@@ -359,7 +367,7 @@ void Generation::generate_plan() {
         int_t s_nodes = node_label_amount[e_source];
         int_t t_nodes = node_label_amount[e_target];
 
-        std::string sub_dir = graph_name + "/" + e_label;
+        std::string sub_dir = store_dir + "/" + e_label;
         mkdir(sub_dir);
 
         int_t e_amount = one_edge[schema::json_edge_amount];
@@ -623,9 +631,11 @@ void Generation::run() {
         generateGraph(st_one_edge);
         if (st_one_edge.b_embedded) embeddedGraph(st_one_edge.embd_gen_plan);
         // ground truth
-        output_ground_truth(st_one_edge, st_one_edge.b_temporal, st_one_edge.b_social, st_one_edge.b_overlap);
-        if (st_one_edge.b_embedded) output_ground_truth(st_one_edge.embd_gen_plan, true, true, false);
+        output_ground_truth_edge(st_one_edge, st_one_edge.b_temporal, st_one_edge.b_social, st_one_edge.b_overlap);
+        if (st_one_edge.b_embedded) output_ground_truth_edge(st_one_edge.embd_gen_plan, true, true, false);
     }
+
+    output_ground_truth_graph();
 
     std::cout << "[Generation::run] end." << std::endl;
     gb_gen_done = true;
@@ -2048,7 +2058,7 @@ bool Generation::path_exists(std::string& path) {
     else if (info.st_mode & S_IFDIR)
         return true;
     else
-        return false;
+         return false;
 }
 
 bool Generation::mkdir(std::string& path) {
@@ -2264,7 +2274,51 @@ bool Generation::check_json_dist(JSON::json& dist, std::string info) {
     return true;
 }
 
-void Generation::output_ground_truth(St_BasicEdgeGeneration& st_basic, bool temporal, bool social, bool overlap) {
+void Generation::output_ground_truth_graph() {
+    JSON::json gt;
+
+    // num_node/edge/comm lbl_node/edge/comm
+    int_t num_node = 0, num_edge = 0, num_comm = 0, num_edge_embd = 0, num_comm_embd = 0;
+    std::vector<std::string> lbl_node, lbl_edge, lbl_comm;
+    // node
+    auto& node_schema = json_obj[schema::json_node];
+    for (auto& one_node : node_schema) {
+        num_node += one_node[schema::json_node_amount];
+        lbl_node.push_back(one_node[schema::json_node_label]);
+    }
+    // edge
+    for (auto& one_edge : edge_gen_plan) {
+        num_edge += one_edge.ground_truth.actual_edges;
+        lbl_edge.push_back(one_edge.e_label);
+        // embd
+        if (one_edge.b_embedded) num_edge_embd += one_edge.embd_gen_plan.ground_truth.actual_edges;
+        // comm
+        if (one_edge.b_social) {
+            num_comm += one_edge.commSplit.size();
+            lbl_comm.push_back(one_edge.e_label);
+            // embd
+            if (one_edge.b_embedded) num_comm_embd += one_edge.embd_gen_plan.commSplit.size();
+        }
+    }
+    gt["num_node"] = num_node;
+    gt["num_edge"] = num_edge;
+    gt["num_comm"] = num_comm;
+    if (num_edge_embd) gt["num_edge_embd"] = num_edge_embd;
+    if (num_comm_embd) gt["num_comm_embd"] = num_comm_embd;
+    gt["lbl_node"] = lbl_node;
+    gt["lbl_edge"] = lbl_edge;
+    gt["lbl_comm"] = lbl_comm;
+
+    std::string filename = store_dir + "/ground_truth.json";
+    std::ofstream of(filename);
+    of << gt.dump(4);
+    of.close();
+
+    std::cout << "[Generation::output_ground_truth_graph] end." << std::endl;
+
+}
+
+void Generation::output_ground_truth_edge(St_BasicEdgeGeneration& st_basic, bool temporal, bool social, bool overlap) {
     JSON::json gt;
 
     bool b_homo = st_basic.e_source == st_basic.e_target;
@@ -2336,7 +2390,7 @@ ending:
     of << gt.dump(4);
     of.close();
 
-    std::cout << "[Generation::output_ground_truth] end." << std::endl;
+    std::cout << "[Generation::output_ground_truth_edge] end." << std::endl;
 }
 
 } //! namespace fastsgg

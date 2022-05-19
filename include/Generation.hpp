@@ -66,6 +66,8 @@ typedef struct _generate_edge : public _generate_edge_basic {
 class Generation
 {
 private:
+    std::string store_dir;
+
     std::string json_filename;
     JSON::json json_obj;
 
@@ -88,7 +90,7 @@ private:
 public:
     Generation();
 
-    Generation(std::string& filename);
+    Generation(std::string& filename, std::string& dirname);
     
     ~Generation();
 
@@ -147,7 +149,9 @@ private:
 
     static bool check_json_dist(JSON::json& dist, std::string info);
 
-    void output_ground_truth(St_BasicEdgeGeneration& st_basic, bool temporal, bool social, bool overlap);
+    void output_ground_truth_graph();
+
+    void output_ground_truth_edge(St_BasicEdgeGeneration& st_basic, bool temporal, bool social, bool overlap);
 }; //! class Generation
 
 } //! namespace fastsgg
